@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const privateAssetSchema = require('./privateAssetSchema')
 const {
   isValidCnic,
   isValidPersonName,
@@ -21,6 +22,8 @@ const bookingSchema = new mongoose.Schema({
   engineCC:     { type: String, trim: true, validate: { validator: value => !value || /^\d+$/.test(value), message: 'Engine capacity must contain digits only' } },
   cnicImageUrl: { type: String },
   regDocUrl:    { type: String },
+  cnicDocument: { type: privateAssetSchema },
+  registrationDocument: { type: privateAssetSchema },
   date:         { type: String, required: true },
   time:         { type: String, trim: true },
   branch:       { type: String, required: true },

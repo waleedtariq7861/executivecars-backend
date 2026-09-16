@@ -9,7 +9,9 @@
     "seed:test-users": "node scripts/seedDemo.js",
     "seed:demo": "node scripts/seedDemo.js",
     "seed:demo:reset": "node scripts/seedDemo.js --reset",
-    "check": "find server src test -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "repair:inspection-reports": "node scripts/repairInspectionReports.js",
+    "repair:inspection-reports:apply": "node scripts/repairInspectionReports.js --apply",
+    "check": "node scripts/checkSyntax.js",
     "test": "node --test --test-concurrency=1 test/*.test.js"
   },
   "dependencies": {
@@ -25,8 +27,7 @@
     "mongoose": "^8.5.1",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.3",
-    "socket.io": "^4.7.5",
-    "stripe": "^16.2.0"
+    "socket.io": "^4.7.5"
   },
   "devDependencies": {
     "mongodb-memory-server": "^10.3.0",

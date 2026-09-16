@@ -2,13 +2,16 @@ const jwt = require('jsonwebtoken')
 const Admin  = require('../models/Admin')
 const Member = require('../models/Member')
 const Seller = require('../models/Seller')
+const { sessionTokenFromRequest } = require('../utils/session')
 
 const protect = async (req, res, next) => {
   const header = req.headers.authorization
-  if (!header || !header.startsWith('Bearer ')) return res.status(401).json({ message: 'Not authenticated' })
+  const bearerToken = header?.startsWith('Bearer ') ? header.slice(7) : ''
+  const token = sessionTokenFromRequest(req) || bearerToken
+  if (!token) return res.status(401).json({ message: 'Not authenticated' })
 
   try {
-    const decoded = jwt.verify(header.split(' ')[1], process.env.JWT_SECRET)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
     let user = null
 
     if (decoded.role === 'admin') {

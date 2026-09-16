@@ -1,6 +1,7 @@
 const Product = require('../models/Product')
 const { escapeRegex, handleControllerError } = require('../utils/http')
 const { strictNumber } = require('../utils/inputValidation')
+const { toInspectionSafeObject } = require('../utils/inspectionReport')
 
 const getProducts = async (req, res) => {
   try {
@@ -29,7 +30,7 @@ const getProducts = async (req, res) => {
     }
 
     const products = await Product.find(filter).sort({ createdAt: -1 })
-    res.json(products)
+    res.json(products.map(product => toInspectionSafeObject(product, { reportPath: `/documents/products/${product._id}/report` })))
   } catch (err) {
     handleControllerError(res, err, 'Could not load used cars')
   }
@@ -39,7 +40,7 @@ const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
     if (!product) return res.status(404).json({ message: 'Product not found' })
-    res.json(product)
+    res.json(toInspectionSafeObject(product, { reportPath: `/documents/products/${product._id}/report` }))
   } catch (err) {
     handleControllerError(res, err, 'Could not load used car')
   }

@@ -1,9 +1,9 @@
 const axios = require('axios')
 const Product = require('../models/Product')
-const Car = require('../models/Car')
 const { escapeRegex, handleControllerError } = require('../utils/http')
 
-const MODEL = 'llama-3.3-70b-versatile'
+const DEFAULT_MODEL = 'openai/gpt-oss-20b'
+const configuredModel = () => String(process.env.GROQ_MODEL || DEFAULT_MODEL).trim()
 
 const SYSTEM_PROMPT = `You are the AI assistant for Executive Cars, a premium used car showroom at Stadium Road, Rawalpindi, Pakistan. Help customers concisely and professionally.
 
@@ -18,7 +18,7 @@ Key facts (no tool needed):
 - Login: unified at /login for buyers, sellers, and auction members
 - Contact: info@executivecars.pk
 
-Keep answers short and to the point. Format car listings clearly. If unsure, direct to info@executivecars.pk.`
+Keep answers short and to the point. The chat widget supports plain text only: do not use Markdown tables, headings, bold markers, or HTML. Use short sentences and simple bullet lines when a list is useful. If unsure, direct to info@executivecars.pk.`
 
 const TOOLS = [
   {
@@ -81,28 +81,7 @@ async function runSearchUsedCars({ make, model, price_min, price_max, year_min, 
 }
 
 async function runGetActiveAuctions() {
-  const now = new Date()
-  const cars = await Car.find({ status: 'active', auctionEnd: { $gt: now } })
-    .select('make model year basePrice currentBid bidCount auctionEnd')
-    .sort({ auctionEnd: 1 })
-    .lean()
-
-  if (cars.length === 0) return 'No active auctions right now.'
-
-  return cars
-    .map(c => {
-      const ms       = c.auctionEnd - now
-      const hours    = Math.floor(ms / 3_600_000)
-      const mins     = Math.floor((ms % 3_600_000) / 60_000)
-      const timeLeft = hours >= 24
-        ? `${Math.floor(hours / 24)}d ${hours % 24}h remaining`
-        : `${hours}h ${mins}m remaining`
-      const bidInfo  = c.currentBid > 0
-        ? `Current bid: PKR ${c.currentBid.toLocaleString()} (${c.bidCount} bid${c.bidCount === 1 ? '' : 's'})`
-        : `Starting price: PKR ${c.basePrice.toLocaleString()} — no bids yet`
-      return `• ${c.year} ${c.make} ${c.model} — ${bidInfo} — ${timeLeft}`
-    })
-    .join('\n')
+  return 'Live auction inventory and bid details are available only to signed-in members with an active auction membership. Open the Auction Portal to view them.'
 }
 
 async function executeTool(name, args) {
@@ -153,7 +132,7 @@ const chat = async (req, res) => {
 
     // First call — model may decide to call a tool
     const res1 = await groqPost({
-      model: MODEL,
+      model: configuredModel(),
       messages: groqMessages,
       tools: TOOLS,
       tool_choice: 'auto',
@@ -175,7 +154,7 @@ const chat = async (req, res) => {
 
       // Second call with tool results injected
       const res2 = await groqPost({
-        model:    MODEL,
+        model:    configuredModel(),
         messages: [...groqMessages, choice1.message, ...toolResults],
         max_tokens: 600,
         temperature: 0.7,
@@ -187,10 +166,14 @@ const chat = async (req, res) => {
     res.json({ reply: choice1.message.content })
   } catch (err) {
     if (err.response) {
-      return res.status(502).json({ message: 'AI service error' })
+      const providerCode = err.response?.data?.error?.code
+      const unavailable = providerCode === 'model_not_found' || err.response.status === 404
+      return res.status(unavailable ? 503 : 502).json({
+        message: unavailable ? 'AI assistant model is unavailable' : 'AI service error',
+      })
     }
     handleControllerError(res, err, 'AI assistant is unavailable')
   }
 }
 
-module.exports = { chat }
+module.exports = { chat, configuredModel }

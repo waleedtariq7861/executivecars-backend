@@ -6,20 +6,25 @@ const Car     = require('../models/Car')
 const Product = require('../models/Product')
 const Bid     = require('../models/Bid')
 const VehicleRecord = require('../models/VehicleRecord')
-const { uploadedFileUrl } = require('../config/cloudinary')
+const { uploadedFileUrl, storedPrivateAsset, deletePrivateAsset } = require('../config/cloudinary')
 const { escapeRegex, handleControllerError, pick } = require('../utils/http')
 const { strictNumber } = require('../utils/inputValidation')
+const { toInspectionSafeObject } = require('../utils/inspectionReport')
+const { toBookingObject } = require('../utils/bookingDto')
+
+const toAdminAuctionObject = car => toInspectionSafeObject(car, { reportPath: `/documents/auctions/${car._id}/report` })
+const toAdminProductObject = product => toInspectionSafeObject(product, { reportPath: `/documents/products/${product._id}/report` })
 
 const AUCTION_UPDATE_FIELDS = [
   'make', 'model', 'variant', 'year', 'km', 'engine', 'fuel', 'transmission', 'color',
   'city', 'registrationCity', 'bodyType', 'assemblyType', 'condition',
-  'verificationStatus', 'inspectionStatus', 'inspectionScore', 'reservePrice',
+  'verificationStatus', 'reservePrice',
   'basePrice', 'auctionStart', 'auctionEnd', 'description', 'status', 'ownerId',
 ]
 const PRODUCT_UPDATE_FIELDS = [
   'make', 'model', 'variant', 'year', 'km', 'price', 'engine', 'fuel', 'transmission',
   'color', 'city', 'registrationCity', 'bodyType', 'assemblyType', 'condition',
-  'verificationStatus', 'inspectionStatus', 'inspectionScore', 'description', 'status', 'ownerId',
+  'verificationStatus', 'description', 'status', 'ownerId',
 ]
 
 const numericField = (name, value, min = 0, max = Number.MAX_SAFE_INTEGER) =>
@@ -82,7 +87,11 @@ const getStats = async (req, res) => {
       .limit(5)
       .populate('highestBidder', 'name email')
 
-    res.json({ totalMembers, totalBookings, liveAuctions, usedCarsListed, verifiedCars, pendingInspections, importedDatasetRows, totalBids, recentBookings, liveAuctionList })
+    res.json({
+      totalMembers, totalBookings, liveAuctions, usedCarsListed, verifiedCars, pendingInspections, importedDatasetRows, totalBids,
+      recentBookings: recentBookings.map(toBookingObject),
+      liveAuctionList: liveAuctionList.map(toAdminAuctionObject),
+    })
   } catch (err) {
     handleControllerError(res, err, 'Could not load dashboard statistics')
   }
@@ -103,7 +112,7 @@ const getBookings = async (req, res) => {
       ]
     }
     const bookings = await Booking.find(filter).sort({ createdAt: -1 })
-    res.json(bookings)
+    res.json(bookings.map(toBookingObject))
   } catch (err) {
     handleControllerError(res, err, 'Could not load bookings')
   }
@@ -138,7 +147,7 @@ const updateBookingStatus = async (req, res) => {
       await booking.save()
     }
 
-    res.json({ message: `Booking ${status}`, booking })
+    res.json({ message: `Booking ${status}`, booking: toBookingObject(booking) })
   } catch (err) {
     handleControllerError(res, err, 'Could not update booking')
   }
@@ -148,6 +157,7 @@ const deleteBooking = async (req, res) => {
   try {
     const booking = await Booking.findByIdAndDelete(req.params.id)
     if (!booking) return res.status(404).json({ message: 'Booking not found' })
+    await Promise.all([deletePrivateAsset(booking.cnicDocument), deletePrivateAsset(booking.registrationDocument)])
     res.json({ message: 'Booking deleted' })
   } catch (err) {
     handleControllerError(res, err, 'Could not delete booking')
@@ -208,7 +218,7 @@ const createCar = async (req, res) => {
     requireFields(req.body, ['make', 'model', 'year', 'km', 'engine', 'basePrice', 'auctionStart', 'auctionEnd'])
 
     const images = req.files?.images?.map(file => uploadedFileUrl(req, file)) || []
-    const pdfUrl = uploadedFileUrl(req, req.files?.report?.[0])
+    const inspectionDocument = storedPrivateAsset(req.files?.report?.[0])
     const ownership = await resolveOwner(ownerId)
     const start = dateField('Auction start', auctionStart)
     const end = dateField('Auction end', auctionEnd)
@@ -224,13 +234,13 @@ const createCar = async (req, res) => {
       basePrice: price, currentBid: price,
       reservePrice: reservePrice ? numericField('Reserve price', reservePrice, 1) : undefined,
       auctionStart: start, auctionEnd: end,
-      description, images, pdfUrl,
-      inspectionStatus: pdfUrl ? 'report_available' : 'not_available',
+      description, images, inspectionDocument,
+      inspectionStatus: inspectionDocument ? 'report_available' : 'not_available',
       ...ownership,
     })
 
     await car.populate('ownerId', 'name email sellerApproved')
-    res.status(201).json(car)
+    res.status(201).json(toAdminAuctionObject(car))
   } catch (err) {
     handleControllerError(res, err, 'Could not create auction')
   }
@@ -239,7 +249,7 @@ const createCar = async (req, res) => {
 const getAdminCars = async (req, res) => {
   try {
     const cars = await Car.find().sort({ createdAt: -1 }).populate('ownerId', 'name email sellerApproved')
-    res.json(cars)
+    res.json(cars.map(toAdminAuctionObject))
   } catch (err) {
     handleControllerError(res, err, 'Could not load auctions')
   }
@@ -255,7 +265,6 @@ const updateCar = async (req, res) => {
     if (Object.prototype.hasOwnProperty.call(updates, 'engine')) updates.engine = String(numericField('Engine capacity', updates.engine, 1, 10000))
     if (Object.prototype.hasOwnProperty.call(updates, 'basePrice')) updates.basePrice = numericField('Base price', updates.basePrice, 1)
     if (Object.prototype.hasOwnProperty.call(updates, 'reservePrice')) updates.reservePrice = numericField('Reserve price', updates.reservePrice, 1)
-    if (Object.prototype.hasOwnProperty.call(updates, 'inspectionScore')) updates.inspectionScore = numericField('Inspection score', updates.inspectionScore, 0, 100)
     if (Object.prototype.hasOwnProperty.call(updates, 'auctionStart')) updates.auctionStart = dateField('Auction start', updates.auctionStart)
     if (Object.prototype.hasOwnProperty.call(updates, 'auctionEnd')) updates.auctionEnd = dateField('Auction end', updates.auctionEnd)
     if (Object.prototype.hasOwnProperty.call(updates, 'ownerId')) {
@@ -269,7 +278,7 @@ const updateCar = async (req, res) => {
     Object.assign(car, updates)
     await car.save()
     await car.populate('ownerId', 'name email sellerApproved')
-    res.json(car)
+    res.json(toAdminAuctionObject(car))
   } catch (err) {
     handleControllerError(res, err, 'Could not update auction')
   }
@@ -279,7 +288,7 @@ const deleteCar = async (req, res) => {
   try {
     const car = await Car.findByIdAndDelete(req.params.id)
     if (!car) return res.status(404).json({ message: 'Car not found' })
-    await Bid.deleteMany({ carId: req.params.id })
+    await Promise.all([Bid.deleteMany({ carId: req.params.id }), deletePrivateAsset(car.inspectionDocument)])
     res.json({ message: 'Car and related bids deleted' })
   } catch (err) {
     handleControllerError(res, err, 'Could not delete auction')
@@ -296,7 +305,7 @@ const getAuctionResult = async (req, res) => {
     const winner = reserveMet && auction.highestBidder
       ? { _id: auction.highestBidder._id, name: auction.highestBidder.name, email: auction.highestBidder.email }
       : null
-    res.json({ auction, bids, reserveMet, winner })
+    res.json({ auction: toAdminAuctionObject(auction), bids, reserveMet, winner })
   } catch (err) {
     handleControllerError(res, err, 'Could not load auction results')
   }
@@ -318,7 +327,7 @@ const closeAuction = async (req, res) => {
       reserveMet,
       winner: reserveMet && auction.highestBidder ? { _id: auction.highestBidder._id, name: auction.highestBidder.name } : null,
     })
-    res.json({ message: 'Auction closed', auction, reserveMet })
+    res.json({ message: 'Auction closed', auction: toAdminAuctionObject(auction), reserveMet })
   } catch (err) {
     handleControllerError(res, err, 'Could not close auction')
   }
@@ -331,19 +340,19 @@ const createProduct = async (req, res) => {
     requireFields(req.body, ['make', 'model', 'year', 'km', 'price'])
 
     const images = req.files?.images?.map(file => uploadedFileUrl(req, file)) || []
-    const pdfUrl = uploadedFileUrl(req, req.files?.report?.[0])
+    const inspectionDocument = storedPrivateAsset(req.files?.report?.[0])
     const ownership = await resolveOwner(ownerId)
 
     const product = await Product.create({
       make, model, variant, year: numericField('Year', year, 1900, new Date().getFullYear() + 1), km: numericField('Mileage', km, 0, 1000000), price: numericField('Price', price, 1),
       engine: engine ? String(numericField('Engine capacity', engine, 1, 10000)) : '', fuel, transmission, color, city, registrationCity, bodyType, assemblyType, condition,
-      description, images, pdfUrl,
-      inspectionStatus: pdfUrl ? 'report_available' : 'not_available',
+      description, images, inspectionDocument,
+      inspectionStatus: inspectionDocument ? 'report_available' : 'not_available',
       ...ownership,
     })
 
     await product.populate('ownerId', 'name email sellerApproved')
-    res.status(201).json(product)
+    res.status(201).json(toAdminProductObject(product))
   } catch (err) {
     handleControllerError(res, err, 'Could not create used-car listing')
   }
@@ -352,7 +361,7 @@ const createProduct = async (req, res) => {
 const getAdminProducts = async (req, res) => {
   try {
     const products = await Product.find().sort({ createdAt: -1 }).populate('ownerId', 'name email sellerApproved')
-    res.json(products)
+    res.json(products.map(toAdminProductObject))
   } catch (err) {
     handleControllerError(res, err, 'Could not load used-car listings')
   }
@@ -367,7 +376,6 @@ const updateProduct = async (req, res) => {
     if (Object.prototype.hasOwnProperty.call(updates, 'km')) updates.km = numericField('Mileage', updates.km, 0, 1000000)
     if (Object.prototype.hasOwnProperty.call(updates, 'price')) updates.price = numericField('Price', updates.price, 1)
     if (Object.prototype.hasOwnProperty.call(updates, 'engine') && updates.engine) updates.engine = String(numericField('Engine capacity', updates.engine, 1, 10000))
-    if (Object.prototype.hasOwnProperty.call(updates, 'inspectionScore')) updates.inspectionScore = numericField('Inspection score', updates.inspectionScore, 0, 100)
     if (Object.prototype.hasOwnProperty.call(updates, 'ownerId')) {
       Object.assign(updates, await resolveOwner(updates.ownerId))
     }
@@ -375,7 +383,7 @@ const updateProduct = async (req, res) => {
     Object.assign(product, updates)
     await product.save()
     await product.populate('ownerId', 'name email sellerApproved')
-    res.json(product)
+    res.json(toAdminProductObject(product))
   } catch (err) {
     handleControllerError(res, err, 'Could not update used-car listing')
   }
@@ -385,6 +393,7 @@ const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id)
     if (!product) return res.status(404).json({ message: 'Product not found' })
+    await deletePrivateAsset(product.inspectionDocument)
     res.json({ message: 'Product deleted' })
   } catch (err) {
     handleControllerError(res, err, 'Could not delete used-car listing')

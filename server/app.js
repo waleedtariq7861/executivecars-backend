@@ -1,10 +1,10 @@
 const express = require('express')
-const path = require('path')
 const cors = require('cors')
 const helmet = require('helmet')
 const mongoose = require('mongoose')
-const { handleWebhook } = require('../src/controllers/paymentController')
 const { predictionLimiter } = require('../src/middleware/rateLimits')
+const { publicImageDir } = require('../src/config/cloudinary')
+const csrfProtection = require('../src/middleware/csrf')
 
 const configuredOrigins = [process.env.CLIENT_URL, ...(process.env.CLIENT_URLS || '').split(',')]
   .map(value => value?.trim().replace(/\/$/, ''))
@@ -33,13 +33,13 @@ const createApp = ({ io } = {}) => {
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 
-  // Stripe requires the untouched request bytes when validating webhooks.
-  app.post('/api/payments/webhook', cors(corsOptions), express.raw({ type: 'application/json', limit: '256kb' }), handleWebhook)
-
   app.use(cors(corsOptions))
+  app.use(csrfProtection(allowedOrigins))
   app.use(express.json({ limit: '1mb' }))
   app.use(express.urlencoded({ extended: true, limit: '1mb' }))
-  app.use('/uploads', express.static(path.resolve(__dirname, '..', 'uploads'), { maxAge: '1d', fallthrough: true }))
+  // Only vehicle imagery is public. Identity documents and inspection reports
+  // are stored outside this mount and served through authorized short-lived URLs.
+  app.use('/uploads/images', express.static(publicImageDir, { maxAge: '1d', fallthrough: true }))
 
   app.use('/api/auth', require('../src/routes/auth'))
   app.use('/api/bookings', require('../src/routes/bookings'))
@@ -55,6 +55,8 @@ const createApp = ({ io } = {}) => {
   app.use('/api/vehicle-catalog', require('../src/routes/vehicleCatalog'))
   app.use('/api/vehicle-options', require('../src/routes/vehicleOptions'))
   app.use('/api/chat', require('../src/routes/chat'))
+  app.use('/api/documents', require('../src/routes/documents'))
+  app.use('/api/demo', require('../src/routes/demo'))
 
   app.get('/api/health', (req, res) => res.json({
     status: 'ok',

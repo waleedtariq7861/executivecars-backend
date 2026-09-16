@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const privateAssetSchema = require('./privateAssetSchema')
 
 const productSchema = new mongoose.Schema({
   make:         { type: String, required: true, trim: true },
@@ -21,6 +22,7 @@ const productSchema = new mongoose.Schema({
   inspectionScore: { type: Number, min: 0, max: 100 },
   images:       [{ type: String }],
   pdfUrl:       { type: String },
+  inspectionDocument: { type: privateAssetSchema },
   description:  { type: String, trim: true },
   status:       { type: String, enum: ['available', 'sold'], default: 'available' },
   listingType:  { type: String, enum: ['new', 'used'], default: 'used' },
@@ -31,5 +33,15 @@ const productSchema = new mongoose.Schema({
 
 productSchema.index({ status: 1, createdAt: -1 })
 productSchema.index({ make: 1, model: 1, year: 1, price: 1 })
+
+productSchema.pre('validate', function (next) {
+  if (this.inspectionDocument?.key) {
+    this.inspectionStatus = 'report_available'
+  } else if (this.inspectionStatus === 'report_available' || this.pdfUrl) {
+    this.inspectionStatus = 'not_available'
+    this.inspectionScore = undefined
+  }
+  next()
+})
 
 module.exports = mongoose.model('Product', productSchema)

@@ -1,10 +1,11 @@
 const jwt = require('jsonwebtoken')
 const mongoose = require('mongoose')
+const { sessionTokenFromRequest } = require('../utils/session')
 
 const initSocket = (io) => {
   // Authenticate socket connections
   io.use((socket, next) => {
-    const token = socket.handshake.auth?.token
+    const token = sessionTokenFromRequest({ headers: socket.handshake.headers }) || socket.handshake.auth?.token
     if (!token) return next(new Error('Authentication required'))
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET)

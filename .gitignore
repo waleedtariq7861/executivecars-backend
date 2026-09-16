@@ -9,6 +9,8 @@ node_modules/
 
 # Uploads (Cloudinary is the actual storage; this is just a local fallback dir)
 uploads/
+private-uploads/
+reports/
 
 # Logs
 logs

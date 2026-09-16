@@ -5,6 +5,11 @@ const Car     = require('../models/Car')
 const Product = require('../models/Product')
 const { handleControllerError } = require('../utils/http')
 const { validateProfileInput } = require('../utils/inputValidation')
+const { toBookingObject } = require('../utils/bookingDto')
+const { toInspectionSafeObject } = require('../utils/inspectionReport')
+
+const toSellerAuctionObject = car => toInspectionSafeObject(car, { reportPath: `/documents/auctions/${car._id}/report` })
+const toSellerProductObject = product => toInspectionSafeObject(product, { reportPath: `/documents/products/${product._id}/report` })
 
 const ownedBy = (user) => ({
   $or: [
@@ -60,7 +65,7 @@ const getBookings = async (req, res) => {
         },
       ],
     }).sort({ createdAt: -1 })
-    res.json(bookings)
+    res.json(bookings.map(toBookingObject))
   } catch (err) {
     handleControllerError(res, err, 'Could not load bookings')
   }
@@ -73,7 +78,10 @@ const getListings = async (req, res) => {
       Car.find(ownedBy(req.user)),
       Product.find(ownedBy(req.user)),
     ])
-    res.json({ auctionCars, usedCars })
+    res.json({
+      auctionCars: auctionCars.map(toSellerAuctionObject),
+      usedCars: usedCars.map(toSellerProductObject),
+    })
   } catch (err) {
     handleControllerError(res, err, 'Could not load listings')
   }
@@ -85,7 +93,7 @@ const getAuctionStatus = async (req, res) => {
     const cars = await Car.find(ownedBy(req.user))
       .sort({ createdAt: -1 })
       .populate('highestBidder', 'name')
-    res.json(cars)
+    res.json(cars.map(toSellerAuctionObject))
   } catch (err) {
     handleControllerError(res, err, 'Could not load auction status')
   }

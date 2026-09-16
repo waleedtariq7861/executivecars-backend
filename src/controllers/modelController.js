@@ -26,9 +26,17 @@ const getModelVersions = async (req, res) => {
 
 const trainModel = async (req, res) => {
   try {
-    const records = await VehicleRecord.find().select('-_id -__v -fingerprint -importBatchId -createdAt -updatedAt').lean()
+    const [records, sourceCounts] = await Promise.all([
+      VehicleRecord.find().select('-_id -__v -fingerprint -importBatchId -createdAt -updatedAt').lean(),
+      VehicleRecord.aggregate([{ $group: { _id: '$source', count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
+    ])
     if (records.length < 30) return res.status(400).json({ message: `At least 30 usable dataset rows are required. Current total: ${records.length}` })
-    const { data } = await axios.post(`${serviceBase()}/train`, { records }, serviceConfig(10 * 60 * 1000))
+    const provenance = {
+      datasetName: 'Administrator-imported MongoDB training records',
+      sourceCategory: 'Rights-confirmed administrator imports',
+      sources: sourceCounts.map(item => ({ source: item._id, rows: item.count })),
+    }
+    const { data } = await axios.post(`${serviceBase()}/train`, { records, provenance }, serviceConfig(10 * 60 * 1000))
     res.status(201).json(data)
   } catch (error) {
     const message = error.response?.data?.detail || error.message

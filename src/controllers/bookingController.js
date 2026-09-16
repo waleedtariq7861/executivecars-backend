@@ -2,8 +2,9 @@ const crypto = require('crypto')
 const Booking = require('../models/Booking')
 const OtpChallenge = require('../models/OtpChallenge')
 const { sendOTPEmail, sendBookingConfirmationEmail } = require('../utils/email')
-const { uploadedFileUrl } = require('../config/cloudinary')
+const { storedPrivateAsset } = require('../config/cloudinary')
 const { handleControllerError } = require('../utils/http')
+const { isDemoMode } = require('../config/runtime')
 const {
   isValidCnic,
   isValidPersonName,
@@ -51,7 +52,7 @@ const sendOTP = async (req, res) => {
       { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
     )
 
-    if (process.env.NODE_ENV !== 'production' && process.env.EMAIL_DELIVERY_MODE === 'development') {
+    if (isDemoMode() && process.env.EMAIL_DELIVERY_MODE === 'development') {
       return res.json({
         message: 'Development email mode is active. Use the OTP shown on screen.',
         delivery: 'development',
@@ -63,7 +64,7 @@ const sendOTP = async (req, res) => {
       await sendOTPEmail(email, otp)
       return res.json({ message: 'OTP sent to your email', delivery: 'email' })
     } catch (emailError) {
-      if (process.env.NODE_ENV === 'production') {
+      if (!isDemoMode()) {
         await OtpChallenge.deleteOne({ email })
         return res.status(502).json({ message: 'Verification email could not be sent. Please try again later.' })
       }
@@ -180,8 +181,8 @@ const submitBooking = async (req, res) => {
     const otpRecord = await OtpChallenge.findOneAndDelete({ email, verified: true, expiresAt: { $gt: new Date() } })
     if (!otpRecord) return res.status(400).json({ message: 'OTP verification required before submitting' })
 
-    const cnicImageUrl = uploadedFileUrl(req, req.files?.cnicImage?.[0])
-    const regDocUrl = uploadedFileUrl(req, req.files?.regDoc?.[0])
+    const cnicDocument = storedPrivateAsset(req.files?.cnicImage?.[0])
+    const registrationDocument = storedPrivateAsset(req.files?.regDoc?.[0])
 
     const booking = await Booking.create({
       memberId: req.user._id,
@@ -194,8 +195,8 @@ const submitBooking = async (req, res) => {
       carYear: String(carYear),
       mileage: String(mileage),
       engineCC: String(engineCC),
-      cnicImageUrl,
-      regDocUrl,
+      cnicDocument,
+      registrationDocument,
       date,
       time,
       branch,
