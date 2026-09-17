@@ -62,6 +62,16 @@ async function inactiveCustomerToken() {
   return response.body.token
 }
 
+const directoryNames = async directory => new Set(await fs.readdir(directory).catch(error => error.code === 'ENOENT' ? [] : Promise.reject(error)))
+const waitForDirectory = async (directory, expected, attempts = 20) => {
+  for (let index = 0; index < attempts; index += 1) {
+    const current = await directoryNames(directory)
+    if (current.size === expected.size && [...current].every(name => expected.has(name))) return
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  assert.deepEqual(await directoryNames(directory), expected)
+}
+
 test('health endpoint reports connected database and secure headers', async () => {
   const response = await request(app).get('/api/health')
   assert.equal(response.status, 200)
@@ -279,6 +289,46 @@ test('private documents require authorization and short-lived access links', asy
   } finally {
     await fs.unlink(path.join(privateUploadDir, key)).catch(() => {})
   }
+})
+
+test('upload boundaries reject unsafe counts and sizes and clean files after controller rejection', async () => {
+  const admin = await Admin.create({ name: 'Upload Admin', email: 'upload-admin@example.com', password: 'admin-pass-123', role: 'admin' })
+  const login = await request(app).post('/api/auth/admin/login').send({ email: admin.email, password: 'admin-pass-123' })
+  const auth = { Authorization: `Bearer ${login.body.token}` }
+  const publicImageDir = require('../src/config/cloudinary').publicImageDir
+  await fs.mkdir(privateUploadDir, { recursive: true })
+  await fs.mkdir(publicImageDir, { recursive: true })
+  const privateBefore = await directoryNames(privateUploadDir)
+  const publicBefore = await directoryNames(publicImageDir)
+  const pdf = Buffer.from('%PDF-1.4\nsynthetic upload boundary fixture\n%%EOF')
+  const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from('synthetic')])
+
+  const rejectedAfterUpload = await request(app)
+    .post('/api/admin/products')
+    .set(auth)
+    .field('model', 'Missing required make')
+    .attach('report', pdf, { filename: 'synthetic.pdf', contentType: 'application/pdf' })
+  assert.equal(rejectedAfterUpload.status, 400)
+  await waitForDirectory(privateUploadDir, privateBefore)
+
+  const oversized = await request(app)
+    .post('/api/admin/products')
+    .set(auth)
+    .field('make', 'Honda').field('model', 'City').field('year', '2022').field('km', '10000').field('price', '5000000')
+    .attach('report', Buffer.alloc(10 * 1024 * 1024 + 1, 0x25), { filename: 'too-large.pdf', contentType: 'application/pdf' })
+  assert.equal(oversized.status, 413)
+  await waitForDirectory(privateUploadDir, privateBefore)
+
+  let excessRequest = request(app)
+    .post('/api/admin/products')
+    .set(auth)
+    .field('make', 'Honda').field('model', 'City').field('year', '2022').field('km', '10000').field('price', '5000000')
+  for (let index = 0; index < 7; index += 1) {
+    excessRequest = excessRequest.attach('images', png, { filename: `image-${index}.png`, contentType: 'image/png' })
+  }
+  const excess = await excessRequest
+  assert.equal(excess.status, 400)
+  await waitForDirectory(publicImageDir, publicBefore)
 })
 
 test('customer cannot access administrator routes', async () => {

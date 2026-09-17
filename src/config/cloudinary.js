@@ -66,6 +66,32 @@ const validateMagicBytes = async file => {
 
 const cleanLocalFiles = files => Promise.all(files.filter(file => file.path).map(file => fs.promises.unlink(file.path).catch(() => {})))
 
+const deleteUploadedFile = async file => {
+  if (!file) return
+  if (file.assetProvider === 'cloudinary' && file.filename) {
+    await cloudinary.uploader.destroy(file.filename, {
+      resource_type: file.resourceType || (file.mimetype === 'application/pdf' ? 'raw' : 'image'),
+      type: file.fieldname === 'images' ? 'upload' : 'authenticated',
+      invalidate: true,
+    })
+    return
+  }
+  if (file.path) await fs.promises.unlink(file.path).catch(error => {
+    if (error.code !== 'ENOENT') throw error
+  })
+}
+
+const cleanUploadedFiles = files => Promise.all(files.map(deleteUploadedFile))
+
+const cleanUploadsAfterFailedResponse = (res, files) => {
+  res.once('finish', () => {
+    if (res.statusCode < 400) return
+    cleanUploadedFiles(files).catch(error => {
+      console.warn(JSON.stringify({ event: 'upload_cleanup_failure', category: error.code || 'storage_error' }))
+    })
+  })
+}
+
 const uploadBuffer = (file, uploadOptions) => new Promise((resolve, reject) => {
   const stream = cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
     if (error) return reject(error)
@@ -86,8 +112,10 @@ const cloudinaryMiddleware = (fields, getOptions) => {
       const files = Object.values(req.files || {}).flat()
       await Promise.all(files.map(validateMagicBytes))
       await Promise.all(files.map(file => uploadBuffer(file, getOptions(file))))
+      cleanUploadsAfterFailedResponse(res, files)
       return next()
     } catch (uploadError) {
+      await cleanUploadedFiles(Object.values(req.files || {}).flat()).catch(() => {})
       if (!uploadError.status) uploadError.status = 502
       return next(uploadError)
     }
@@ -105,6 +133,7 @@ const localMiddleware = fields => {
         file.assetProvider = 'local'
         file.resourceType = file.mimetype === 'application/pdf' ? 'raw' : 'image'
       })
+      cleanUploadsAfterFailedResponse(res, files)
       return next()
     } catch (validationError) {
       await cleanLocalFiles(files)
