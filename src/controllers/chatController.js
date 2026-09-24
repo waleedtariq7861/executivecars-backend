@@ -16,7 +16,7 @@ You have two tools available:
 - get_active_auctions: use whenever the user asks about auctions, live bidding, or auction cars
 
 Key facts (no tool needed):
-- Selling: 3-step process — fill vehicle details, book inspection (OTP-verified email), receive seller credentials within 1–2 business days. No upfront fee; commission only on sale.
+- Selling and inspection: sign in with the unified account, then open /seller/book-inspection. Enter contact and vehicle details, optionally upload CNIC and registration documents, and choose a preferred date, time, and branch in the form. Verify the booking email with a six-digit OTP and submit. The request starts pending review; track its status at /seller/bookings. Approval uses the same account, not separate seller credentials. Do not claim that a scheduling email link is sent or promise an approval time or fee terms.
 - Auction membership: PKR 4,999/year. Bids are binding.
 - Price Predictor: AI price estimation for Pakistani car market at /price-predictor
 - Login: unified at /login for buyers, sellers, and auction members
@@ -183,7 +183,7 @@ const validateChatCapability = async ({ force = false } = {}) => {
       messages: [{ role: 'user', content: 'Reply OK.' }],
       tools: TOOLS,
       tool_choice: 'none',
-      max_tokens: 2,
+      max_tokens: 100,
       temperature: 0,
     })
     providerReply(response)

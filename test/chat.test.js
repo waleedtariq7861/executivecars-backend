@@ -34,6 +34,9 @@ test('chat sends the environment-configured model to Groq', async () => {
     await chat({ body: { messages: [{ role: 'user', content: 'Hello' }] } }, response)
     assert.equal(configuredModel(), 'tool-capable-test-model')
     assert.equal(requestBody.model, 'tool-capable-test-model')
+    assert.match(requestBody.messages[0].content, /\/seller\/book-inspection/)
+    assert.match(requestBody.messages[0].content, /same account, not separate seller credentials/)
+    assert.doesNotMatch(requestBody.messages[0].content, /receive seller credentials within/)
     assert.equal(record.statusCode, 200)
     assert.deepEqual(record.body, { reply: 'Hello from the configured model.' })
   } finally {
