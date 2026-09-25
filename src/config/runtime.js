@@ -10,6 +10,10 @@ const validateRuntimeConfig = (env = process.env) => {
   if (mode === 'production') {
     if (env.NODE_ENV !== 'production') throw new Error('APP_MODE=production requires NODE_ENV=production')
     if (env.EMAIL_DELIVERY_MODE === 'development') throw new Error('Production mode cannot use development email delivery')
+    if (env.REQUIRE_CLOUDINARY === 'true' && [env.CLOUDINARY_CLOUD_NAME, env.CLOUDINARY_API_KEY, env.CLOUDINARY_API_SECRET]
+      .some(value => !value || /^(your_|local-development)/i.test(value))) {
+      throw new Error('Durable uploads require all three Cloudinary credentials')
+    }
     if (env.ENABLE_DEMO_SEED === 'true') throw new Error('Production mode cannot enable demo data seeding')
     if (env.PAYMENT_MODE === 'demo') throw new Error('Production mode cannot expose demo membership payments')
     if (placeholderSecret(String(env.JWT_SECRET || ''))) throw new Error('Production mode requires a non-placeholder JWT_SECRET of at least 32 characters')
