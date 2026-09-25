@@ -203,7 +203,9 @@ const submitBooking = async (req, res) => {
       status: 'pending',
     })
 
-    sendBookingConfirmationEmail(email, name, date, branch).catch(() => {})
+    sendBookingConfirmationEmail(email, name, date, branch).catch(error => {
+      console.error('Booking confirmation email delivery failed:', error.message)
+    })
 
     res.status(201).json({ message: 'Booking submitted successfully', bookingId: booking._id })
   } catch (err) {
