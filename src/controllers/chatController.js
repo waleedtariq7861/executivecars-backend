@@ -1,9 +1,13 @@
 const axios = require('axios')
+const { randomUUID } = require('crypto')
 const Product = require('../models/Product')
-const Car = require('../models/Car')
-const { escapeRegex, handleControllerError } = require('../utils/http')
+const { isDemoMode } = require('../config/runtime')
+const { escapeRegex } = require('../utils/http')
 
-const MODEL = 'llama-3.3-70b-versatile'
+const DEFAULT_MODEL = 'openai/gpt-oss-20b'
+const configuredModel = () => String(process.env.GROQ_MODEL || DEFAULT_MODEL).trim()
+const capabilityCacheMs = () => Math.max(30_000, Number(process.env.CHAT_CAPABILITY_CACHE_MS) || 300_000)
+let capabilityCache = null
 
 const SYSTEM_PROMPT = `You are the AI assistant for Executive Cars, a premium used car showroom at Stadium Road, Rawalpindi, Pakistan. Help customers concisely and professionally.
 
@@ -12,13 +16,13 @@ You have two tools available:
 - get_active_auctions: use whenever the user asks about auctions, live bidding, or auction cars
 
 Key facts (no tool needed):
-- Selling: 3-step process — fill vehicle details, book inspection (OTP-verified email), receive seller credentials within 1–2 business days. No upfront fee; commission only on sale.
+- Selling and inspection: sign in with the unified account, then open /seller/book-inspection. Enter contact and vehicle details, optionally upload CNIC and registration documents, and choose a preferred date, time, and branch in the form. Verify the booking email with a six-digit OTP and submit. The request starts pending review; track its status at /seller/bookings. Approval uses the same account, not separate seller credentials. Do not claim that a scheduling email link is sent or promise an approval time or fee terms.
 - Auction membership: PKR 4,999/year. Bids are binding.
 - Price Predictor: AI price estimation for Pakistani car market at /price-predictor
 - Login: unified at /login for buyers, sellers, and auction members
 - Contact: info@executivecars.pk
 
-Keep answers short and to the point. Format car listings clearly. If unsure, direct to info@executivecars.pk.`
+Keep answers short and to the point. The chat widget supports plain text only: do not use Markdown tables, headings, bold markers, or HTML. Use short sentences and simple bullet lines when a list is useful. If unsure, direct to info@executivecars.pk.`
 
 const TOOLS = [
   {
@@ -81,28 +85,7 @@ async function runSearchUsedCars({ make, model, price_min, price_max, year_min, 
 }
 
 async function runGetActiveAuctions() {
-  const now = new Date()
-  const cars = await Car.find({ status: 'active', auctionEnd: { $gt: now } })
-    .select('make model year basePrice currentBid bidCount auctionEnd')
-    .sort({ auctionEnd: 1 })
-    .lean()
-
-  if (cars.length === 0) return 'No active auctions right now.'
-
-  return cars
-    .map(c => {
-      const ms       = c.auctionEnd - now
-      const hours    = Math.floor(ms / 3_600_000)
-      const mins     = Math.floor((ms % 3_600_000) / 60_000)
-      const timeLeft = hours >= 24
-        ? `${Math.floor(hours / 24)}d ${hours % 24}h remaining`
-        : `${hours}h ${mins}m remaining`
-      const bidInfo  = c.currentBid > 0
-        ? `Current bid: PKR ${c.currentBid.toLocaleString()} (${c.bidCount} bid${c.bidCount === 1 ? '' : 's'})`
-        : `Starting price: PKR ${c.basePrice.toLocaleString()} — no bids yet`
-      return `• ${c.year} ${c.make} ${c.model} — ${bidInfo} — ${timeLeft}`
-    })
-    .join('\n')
+  return 'Live auction inventory and bid details are available only to signed-in members with an active auction membership. Open the Auction Portal to view them.'
 }
 
 async function executeTool(name, args) {
@@ -124,7 +107,110 @@ const groqPost = (body) =>
     timeout: 20000,
   })
 
+class InvalidProviderResponse extends Error {
+  constructor(message) {
+    super(message)
+    this.name = 'InvalidProviderResponse'
+  }
+}
+
+const providerChoice = response => {
+  const choice = response?.data?.choices?.[0]
+  if (!choice?.message || typeof choice.message !== 'object') {
+    throw new InvalidProviderResponse('Provider response did not contain a message choice')
+  }
+  return choice
+}
+
+const providerReply = response => {
+  const content = providerChoice(response).message.content
+  if (typeof content !== 'string' || !content.trim()) {
+    throw new InvalidProviderResponse('Provider response did not contain reply content')
+  }
+  return content.trim()
+}
+
+const errorCategory = err => {
+  const status = Number(err.response?.status)
+  const providerCode = err.response?.data?.error?.code
+  if (err instanceof InvalidProviderResponse || err instanceof SyntaxError) return 'invalid_response'
+  if (providerCode === 'model_not_found' || status === 404) return 'model_unavailable'
+  if (status === 429) return 'rate_limited'
+  if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') return 'timeout'
+  if (status >= 500) return 'provider_failure'
+  if (err.response) return 'provider_rejected'
+  return 'network_error'
+}
+
+const publicError = category => {
+  if (category === 'model_unavailable') return { status: 503, code: category, message: 'AI assistant model is unavailable' }
+  if (category === 'invalid_response') return { status: 502, code: category, message: 'AI service returned an invalid response' }
+  if (category === 'provider_failure' || category === 'provider_rejected') return { status: 502, code: category, message: 'AI service error' }
+  return { status: 503, code: category, message: 'AI assistant is temporarily unavailable' }
+}
+
+const requestIdFor = req => {
+  const supplied = String(req.get?.('x-request-id') || '').trim()
+  return /^[a-zA-Z0-9._:-]{1,100}$/.test(supplied) ? supplied : randomUUID()
+}
+
+const sendChatError = (res, category, requestId) => {
+  const error = publicError(category)
+  console.warn(JSON.stringify({ event: 'chat_provider_failure', requestId, category }))
+  return res.status(error.status).json({ message: error.message, code: error.code, requestId })
+}
+
+const resetChatCapabilityCache = () => { capabilityCache = null }
+
+const validateChatCapability = async ({ force = false } = {}) => {
+  if (!process.env.GROQ_API_KEY) {
+    const demoFallback = isDemoMode()
+    return {
+      configured: false, providerReachable: false, modelUsable: false, demoFallback,
+      status: demoFallback ? 'available' : 'unavailable',
+    }
+  }
+
+  const cacheKey = `${configuredModel()}:${process.env.GROQ_API_KEY}`
+  if (!force && capabilityCache?.key === cacheKey && Date.now() - capabilityCache.checkedAt < capabilityCacheMs()) {
+    return capabilityCache.value
+  }
+
+  let value
+  try {
+    const response = await groqPost({
+      model: configuredModel(),
+      messages: [{ role: 'user', content: 'Reply OK.' }],
+      tools: TOOLS,
+      tool_choice: 'none',
+      max_tokens: 100,
+      temperature: 0,
+    })
+    providerReply(response)
+    value = { configured: true, providerReachable: true, modelUsable: true, demoFallback: false, status: 'available', category: null }
+  } catch (err) {
+    const category = errorCategory(err)
+    value = {
+      configured: true,
+      providerReachable: !['timeout', 'network_error', 'provider_failure'].includes(category),
+      modelUsable: false,
+      demoFallback: false,
+      status: 'unavailable',
+      category,
+    }
+  }
+  capabilityCache = { key: cacheKey, checkedAt: Date.now(), value }
+  return value
+}
+
+const chatHealth = async (req, res) => {
+  const capability = await validateChatCapability()
+  const { category, ...publicCapability } = capability
+  return res.status(capability.status === 'available' ? 200 : 503).json(publicCapability)
+}
+
 const chat = async (req, res) => {
+  const requestId = requestIdFor(req)
   try {
     const { messages } = req.body
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -136,6 +222,9 @@ const chat = async (req, res) => {
       .slice(-20)
 
     if (!process.env.GROQ_API_KEY) {
+      if (!isDemoMode()) {
+        return res.status(503).json({ message: 'AI assistant is not configured', code: 'not_configured', requestId })
+      }
       const latest = history.at(-1)?.content || ''
       if (/auction|bid|bidding/i.test(latest)) {
         return res.json({ reply: await runGetActiveAuctions() })
@@ -149,11 +238,16 @@ const chat = async (req, res) => {
       })
     }
 
+    const capability = await validateChatCapability()
+    if (!capability.modelUsable) {
+      return sendChatError(res, capability.category || 'model_unavailable', requestId)
+    }
+
     const groqMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...history]
 
     // First call — model may decide to call a tool
     const res1 = await groqPost({
-      model: MODEL,
+      model: configuredModel(),
       messages: groqMessages,
       tools: TOOLS,
       tool_choice: 'auto',
@@ -161,13 +255,18 @@ const chat = async (req, res) => {
       temperature: 0.7,
     })
 
-    const choice1 = res1.data.choices[0]
+    const choice1 = providerChoice(res1)
 
     if (choice1.finish_reason === 'tool_calls') {
+      if (!Array.isArray(choice1.message.tool_calls) || choice1.message.tool_calls.length === 0) {
+        throw new InvalidProviderResponse('Provider declared tool calls without any tool call')
+      }
       // Execute all requested tools in parallel
       const toolResults = await Promise.all(
         choice1.message.tool_calls.map(async tc => {
-          const args   = JSON.parse(tc.function.arguments || '{}')
+          if (!tc?.id || !tc.function?.name) throw new InvalidProviderResponse('Provider returned an incomplete tool call')
+          const args = JSON.parse(tc.function.arguments || '{}')
+          if (!args || typeof args !== 'object' || Array.isArray(args)) throw new InvalidProviderResponse('Tool arguments must be an object')
           const result = await executeTool(tc.function.name, args)
           return { tool_call_id: tc.id, role: 'tool', content: result }
         })
@@ -175,22 +274,19 @@ const chat = async (req, res) => {
 
       // Second call with tool results injected
       const res2 = await groqPost({
-        model:    MODEL,
+        model:    configuredModel(),
         messages: [...groqMessages, choice1.message, ...toolResults],
         max_tokens: 600,
         temperature: 0.7,
       })
 
-      return res.json({ reply: res2.data.choices[0].message.content })
+      return res.json({ reply: providerReply(res2) })
     }
 
-    res.json({ reply: choice1.message.content })
+    return res.json({ reply: providerReply(res1) })
   } catch (err) {
-    if (err.response) {
-      return res.status(502).json({ message: 'AI service error' })
-    }
-    handleControllerError(res, err, 'AI assistant is unavailable')
+    return sendChatError(res, errorCategory(err), requestId)
   }
 }
 
-module.exports = { chat }
+module.exports = { chat, chatHealth, configuredModel, validateChatCapability, resetChatCapabilityCache }

@@ -58,12 +58,19 @@ const getDatasetImports = async (req, res) => {
 
 const getDatasetSummary = async (req, res) => {
   try {
-    const [rowCount, latestImport, makeCounts] = await Promise.all([
+    const [rowCount, latestImport, makeCounts, sourceCounts] = await Promise.all([
       VehicleRecord.countDocuments(),
       DatasetImport.findOne().sort({ createdAt: -1 }),
       VehicleRecord.aggregate([{ $group: { _id: '$make', count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 10 }]),
+      VehicleRecord.aggregate([{ $group: { _id: '$source', count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 20 }]),
     ])
-    res.json({ rowCount, latestImport, commonMakes: makeCounts.map(item => ({ make: item._id, count: item.count })) })
+    res.json({
+      rowCount,
+      trainingSource: 'Administrator-imported MongoDB vehicle records',
+      latestImport,
+      commonMakes: makeCounts.map(item => ({ make: item._id, count: item.count })),
+      sources: sourceCounts.map(item => ({ source: item._id, count: item.count })),
+    })
   } catch (error) {
     handleControllerError(res, error, 'Could not load dataset summary')
   }

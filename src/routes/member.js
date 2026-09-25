@@ -18,8 +18,10 @@ router.get('/saved-cars', protect, getSavedCars)
 router.post('/saved-cars/:productId', protect, saveCar)
 router.delete('/saved-cars/:productId', protect, removeSavedCar)
 
-router.get('/profile',  protect, memberOnly, getProfile)
-router.put('/profile',  protect, memberOnly, updateProfile)
+// Account/profile management is available to every signed-in customer;
+// auction data below still requires an active membership.
+router.get('/profile',  protect, getProfile)
+router.put('/profile',  protect, updateProfile)
 router.get('/bids',     protect, memberOnly, getMyBids)
 router.get('/won',      protect, memberOnly, getWonCars)
 router.get('/stats',    protect, memberOnly, getStats)

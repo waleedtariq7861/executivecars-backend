@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const privateAssetSchema = require('./privateAssetSchema')
 
 const carSchema = new mongoose.Schema({
   make:          { type: String, required: true, trim: true },
@@ -20,6 +21,7 @@ const carSchema = new mongoose.Schema({
   inspectionScore: { type: Number, min: 0, max: 100 },
   images:        [{ type: String }],
   pdfUrl:        { type: String },
+  inspectionDocument: { type: privateAssetSchema },
   basePrice:     { type: Number, required: true, min: 1 },
   reservePrice:  { type: Number, min: 1 },
   minimumBidIncrement: { type: Number, min: 1, default: 50000 },
@@ -38,6 +40,12 @@ const carSchema = new mongoose.Schema({
 carSchema.pre('validate', function (next) {
   if (this.auctionStart && this.auctionEnd && this.auctionEnd <= this.auctionStart) {
     this.invalidate('auctionEnd', 'Auction end time must be after the start time')
+  }
+  if (this.inspectionDocument?.key) {
+    this.inspectionStatus = 'report_available'
+  } else if (this.inspectionStatus === 'report_available' || this.pdfUrl) {
+    this.inspectionStatus = 'not_available'
+    this.inspectionScore = undefined
   }
   next()
 })

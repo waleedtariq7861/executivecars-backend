@@ -5,6 +5,10 @@ const Car     = require('../models/Car')
 const Product = require('../models/Product')
 const { handleControllerError } = require('../utils/http')
 const { validateProfileInput } = require('../utils/inputValidation')
+const { toInspectionSafeObject } = require('../utils/inspectionReport')
+
+const toSavedProductObject = product => toInspectionSafeObject(product, { reportPath: `/documents/products/${product._id}/report` })
+const toWonAuctionObject = car => toInspectionSafeObject(car, { reportPath: `/documents/auctions/${car._id}/report` })
 
 const requireCustomerAccount = (req, res) => {
   if (req.accountRole !== 'user' || req.accountModel !== 'member') {
@@ -22,7 +26,7 @@ const getSavedCars = async (req, res) => {
       match: { status: 'available' },
       options: { sort: { createdAt: -1 } },
     })
-    res.json({ cars: member?.savedCars || [] })
+    res.json({ cars: (member?.savedCars || []).map(toSavedProductObject) })
   } catch (err) {
     handleControllerError(res, err, 'Could not load saved cars')
   }
@@ -38,7 +42,7 @@ const saveCar = async (req, res) => {
     if (!product) return res.status(404).json({ message: 'Car listing not found' })
 
     await Member.findByIdAndUpdate(req.user._id, { $addToSet: { savedCars: product._id } })
-    res.status(201).json({ saved: true, car: product })
+    res.status(201).json({ saved: true, car: toSavedProductObject(product) })
   } catch (err) {
     handleControllerError(res, err, 'Could not save car')
   }
@@ -109,7 +113,7 @@ const getWonCars = async (req, res) => {
         { $expr: { $gte: ['$currentBid', '$reservePrice'] } },
       ],
     })
-    res.json(wonCars)
+    res.json(wonCars.map(toWonAuctionObject))
   } catch (err) {
     handleControllerError(res, err, 'Could not load won cars')
   }

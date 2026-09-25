@@ -7,6 +7,7 @@ const Admin = require('../src/models/Admin')
 const initSocket = require('../src/socket/bidSocket')
 const { startAuctionScheduler } = require('../src/utils/auctionScheduler')
 const { createApp, allowedOrigins } = require('./app')
+const { isDemoMode, validateRuntimeConfig } = require('../src/config/runtime')
 
 const app = createApp()
 const server = http.createServer(app)
@@ -25,7 +26,7 @@ let schedulerTimer
 let started = false
 
 const ensureDevelopmentAdmin = async () => {
-  if (process.env.NODE_ENV === 'production') return
+  if (!isDemoMode()) return
   const email = String(process.env.DEV_ADMIN_EMAIL || '').trim().toLowerCase()
   const password = String(process.env.DEV_ADMIN_PASSWORD || '')
   if (!email || !password) {
@@ -45,6 +46,7 @@ const ensureDevelopmentAdmin = async () => {
 
 const start = async () => {
   if (started) return server
+  validateRuntimeConfig()
   if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required')
   await connectDB()
   await ensureDevelopmentAdmin()

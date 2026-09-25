@@ -4,10 +4,14 @@ process.env.CLIENT_URL = 'http://127.0.0.1:5173'
 process.env.ML_API_URL = ''
 process.env.EMAIL_DELIVERY_MODE = 'development'
 process.env.ENABLE_DEMO_SEED = 'true'
+process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = 'true'
 
 const { before, after, beforeEach, test } = require('node:test')
 const assert = require('node:assert/strict')
 const mongoose = require('mongoose')
+const crypto = require('crypto')
+const fs = require('fs/promises')
+const path = require('path')
 const request = require('supertest')
 const { MongoMemoryServer } = require('mongodb-memory-server')
 const { createApp } = require('../server/app')
@@ -19,6 +23,8 @@ const Booking = require('../src/models/Booking')
 const Member = require('../src/models/Member')
 const MembershipPayment = require('../src/models/MembershipPayment')
 const { DEMO_OTP, seedDemo } = require('../scripts/seedDemo')
+const { privateUploadDir } = require('../src/config/cloudinary')
+const { validateRuntimeConfig } = require('../src/config/runtime')
 
 let database
 let app
@@ -48,6 +54,24 @@ async function customerToken() {
   return response.body.token
 }
 
+async function inactiveCustomerToken() {
+  const response = await request(app).post('/api/auth/register').send({
+    name: 'Inactive Customer', email: 'inactive-customer@example.com', phone: '+92 300 1234500', password: 'test-pass-123',
+  })
+  assert.equal(response.status, 201)
+  return response.body.token
+}
+
+const directoryNames = async directory => new Set(await fs.readdir(directory).catch(error => error.code === 'ENOENT' ? [] : Promise.reject(error)))
+const waitForDirectory = async (directory, expected, attempts = 20) => {
+  for (let index = 0; index < attempts; index += 1) {
+    const current = await directoryNames(directory)
+    if (current.size === expected.size && [...current].every(name => expected.has(name))) return
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  assert.deepEqual(await directoryNames(directory), expected)
+}
+
 test('health endpoint reports connected database and secure headers', async () => {
   const response = await request(app).get('/api/health')
   assert.equal(response.status, 200)
@@ -62,6 +86,54 @@ test('login and predictor reject invalid input', async () => {
   const prediction = await request(app).post('/api/predict-price').send({ make: '', year: 1900, mileage: -1 })
   assert.equal(prediction.status, 400)
   assert.ok(prediction.body.errors.make)
+})
+
+test('browser sessions use HttpOnly cookies, restore safely, enforce CSRF, and log out', async () => {
+  const browser = request.agent(app)
+  const previousExposure = process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS
+  delete process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS
+  try {
+    const registration = await browser.post('/api/auth/register').send({
+      name: 'Cookie Session User', email: 'cookie-session@example.com', phone: '+92 300 7778899', password: 'test-pass-123',
+    })
+    assert.equal(registration.status, 201)
+    assert.equal(registration.body.token, undefined)
+    assert.ok(registration.body.csrfToken)
+    assert.match(registration.headers['set-cookie'][0], /ec_session=/)
+    assert.match(registration.headers['set-cookie'][0], /HttpOnly/i)
+    assert.match(registration.headers['set-cookie'][0], /SameSite=Lax/i)
+
+    const restored = await browser.get('/api/auth/session')
+    assert.equal(restored.status, 200)
+    assert.equal(restored.body.user.email, 'cookie-session@example.com')
+    assert.equal(restored.body.csrfToken, registration.body.csrfToken)
+    assert.match(restored.headers['cache-control'], /no-store/)
+
+    const missingOrigin = await browser.put('/api/member/profile')
+      .set('X-CSRF-Token', registration.body.csrfToken)
+      .send({ name: 'Cookie Session User' })
+    assert.equal(missingOrigin.status, 403)
+
+    const missingCsrf = await browser.put('/api/member/profile')
+      .set('Origin', process.env.CLIENT_URL)
+      .send({ name: 'Cookie Session User' })
+    assert.equal(missingCsrf.status, 403)
+
+    const profile = await browser.put('/api/member/profile')
+      .set('Origin', process.env.CLIENT_URL)
+      .set('X-CSRF-Token', registration.body.csrfToken)
+      .send({ name: 'Cookie Session User' })
+    assert.equal(profile.status, 200, JSON.stringify(profile.body))
+
+    const logout = await browser.post('/api/auth/logout')
+      .set('Origin', process.env.CLIENT_URL)
+      .set('X-CSRF-Token', registration.body.csrfToken)
+    assert.equal(logout.status, 200)
+    assert.match(logout.headers['set-cookie'][0], /ec_session=;/)
+    assert.equal((await browser.get('/api/auth/session')).status, 401)
+  } finally {
+    process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = previousExposure
+  }
 })
 
 test('registration and profile APIs reject invalid identity fields', async () => {
@@ -99,6 +171,164 @@ test('used car listing endpoint returns stored marketplace data', async () => {
   assert.equal(response.status, 200)
   assert.equal(response.body.length, 1)
   assert.equal(response.body[0].model, 'Corolla')
+})
+
+test('auction inventory requires active membership and returns an approved DTO', async () => {
+  const inactiveToken = await inactiveCustomerToken()
+  const activeToken = await customerToken()
+  const otherBidder = await Member.create({
+    name: 'Private Bidder', email: 'private-bidder@example.com', phone: '+92 300 7654399', password: 'test-pass-123',
+  })
+  const car = await Car.create({
+    make: 'Toyota', model: 'Corolla', year: 2020, km: 50000, engine: '1800', basePrice: 4000000,
+    currentBid: 4100000, highestBidder: otherBidder._id, bidCount: 1,
+    ownerId: otherBidder._id, sellerEmail: 'seller-private@example.com', demoKey: 'private-internal-key',
+    auctionStart: new Date(Date.now() - 60000), auctionEnd: new Date(Date.now() + 3600000),
+  })
+
+  const anonymousList = await request(app).get('/api/cars?phase=all')
+  const inactiveList = await request(app).get('/api/cars?phase=all').set('Authorization', `Bearer ${inactiveToken}`)
+  assert.equal(anonymousList.status, 401)
+  assert.equal(inactiveList.status, 403)
+
+  const activeList = await request(app).get('/api/cars?phase=all').set('Authorization', `Bearer ${activeToken}`)
+  assert.equal(activeList.status, 200)
+  assert.equal(activeList.body.length, 1)
+  assert.equal(activeList.body[0].model, 'Corolla')
+  assert.equal(activeList.body[0].highestBidder.name, 'Pr***')
+  assert.equal(activeList.body[0].highestBidder._id, undefined)
+  for (const forbidden of ['ownerId', 'sellerEmail', 'demoKey']) {
+    assert.equal(activeList.body[0][forbidden], undefined)
+  }
+
+  const anonymousDetail = await request(app).get(`/api/cars/${car._id}`)
+  const inactiveDetail = await request(app).get(`/api/cars/${car._id}`).set('Authorization', `Bearer ${inactiveToken}`)
+  const activeDetail = await request(app).get(`/api/cars/${car._id}`).set('Authorization', `Bearer ${activeToken}`)
+  assert.equal(anonymousDetail.status, 401)
+  assert.equal(inactiveDetail.status, 403)
+  assert.equal(activeDetail.status, 200)
+  assert.equal(activeDetail.body.sellerEmail, undefined)
+})
+
+test('private documents require authorization and short-lived access links', async () => {
+  const ownerRegistration = await request(app).post('/api/auth/register').send({
+    name: 'Document Owner', email: 'document-owner@example.com', phone: '+92 300 1112233', password: 'test-pass-123',
+  })
+  const otherRegistration = await request(app).post('/api/auth/register').send({
+    name: 'Other Document User', email: 'other-document@example.com', phone: '+92 300 1112244', password: 'test-pass-123',
+  })
+  await Member.findByIdAndUpdate(ownerRegistration.body.user.id, { subscriptionStatus: 'active', subscriptionExpiry: new Date(Date.now() + 86400000) })
+  await Member.findByIdAndUpdate(otherRegistration.body.user.id, { subscriptionStatus: 'active', subscriptionExpiry: new Date(Date.now() + 86400000) })
+
+  const admin = await Admin.create({ name: 'Document Admin', email: 'document-admin@example.com', password: 'admin-pass-123', role: 'admin' })
+  const adminLogin = await request(app).post('/api/auth/admin/login').send({ email: admin.email, password: 'admin-pass-123' })
+  const ownerAuth = { Authorization: `Bearer ${ownerRegistration.body.token}` }
+  const otherAuth = { Authorization: `Bearer ${otherRegistration.body.token}` }
+  const adminAuth = { Authorization: `Bearer ${adminLogin.body.token}` }
+
+  const key = `document-test-${Date.now()}.pdf`
+  const bytes = Buffer.from('%PDF-1.4\nsynthetic QA document\n%%EOF')
+  await fs.mkdir(privateUploadDir, { recursive: true })
+  await fs.writeFile(path.join(privateUploadDir, key), bytes)
+  const asset = { provider: 'local', key, resourceType: 'raw', contentType: 'application/pdf', size: bytes.length, extension: '.pdf' }
+
+  try {
+    const product = await Product.create({
+      make: 'Honda', model: 'City', year: 2022, km: 21000, price: 5200000,
+      ownerId: ownerRegistration.body.user.id, inspectionDocument: asset,
+    })
+    const booking = await Booking.create({
+      memberId: ownerRegistration.body.user.id,
+      name: 'Document Owner', email: 'document-owner@example.com', phone: '+923001112233',
+      carMake: 'Honda', carModel: 'City', date: '2026-09-15', branch: 'Rawalpindi',
+      cnicDocument: asset,
+    })
+
+    const publicProduct = await request(app).get(`/api/products/${product._id}`)
+    assert.equal(publicProduct.status, 200)
+    assert.equal(publicProduct.body.hasInspectionReport, true)
+    assert.equal(publicProduct.body.inspectionDocument, undefined)
+    assert.equal(publicProduct.body.pdfUrl, undefined)
+    assert.equal(publicProduct.body.inspectionReportAccessPath, `/documents/products/${product._id}/report`)
+
+    const anonymous = await request(app).get(`/api/documents/products/${product._id}/report`)
+    assert.equal(anonymous.status, 401)
+
+    const productAccess = await request(app).get(`/api/documents/products/${product._id}/report`).set(otherAuth)
+    assert.equal(productAccess.status, 200)
+    assert.match(productAccess.headers['cache-control'], /no-store/)
+    assert.ok(new Date(productAccess.body.expiresAt) > new Date())
+    const documentPath = new URL(productAccess.body.url).pathname
+    const documentResponse = await request(app).get(documentPath)
+    assert.equal(documentResponse.status, 200)
+    assert.equal(documentResponse.headers['content-type'], 'application/pdf')
+    assert.deepEqual(documentResponse.body, bytes)
+
+    const wrongOwner = await request(app).get(`/api/documents/bookings/${booking._id}/cnic`).set(otherAuth)
+    const correctOwner = await request(app).get(`/api/documents/bookings/${booking._id}/cnic`).set(ownerAuth)
+    const adminAccess = await request(app).get(`/api/documents/bookings/${booking._id}/cnic`).set(adminAuth)
+    assert.equal(wrongOwner.status, 403)
+    assert.equal(correctOwner.status, 200)
+    assert.equal(adminAccess.status, 200)
+
+    const directLegacyPath = await request(app).get(`/uploads/${key}`)
+    assert.equal(directLegacyPath.status, 404)
+
+    const expiredPayload = Buffer.from(JSON.stringify({ key, contentType: 'application/pdf', extension: '.pdf', exp: 1 })).toString('base64url')
+    const expiredSignature = crypto.createHmac('sha256', process.env.JWT_SECRET).update(expiredPayload).digest('base64url')
+    const expired = await request(app).get(`/api/documents/access/${expiredPayload}.${expiredSignature}`)
+    assert.equal(expired.status, 403)
+
+    const renamedExecutable = await request(app)
+      .post('/api/admin/products')
+      .set(adminAuth)
+      .field('make', 'Toyota').field('model', 'Yaris').field('year', '2022').field('km', '20000').field('price', '4900000')
+      .attach('report', Buffer.from('MZ executable content'), { filename: 'report.pdf', contentType: 'application/pdf' })
+    assert.equal(renamedExecutable.status, 400)
+    assert.match(renamedExecutable.body.message, /does not match/i)
+  } finally {
+    await fs.unlink(path.join(privateUploadDir, key)).catch(() => {})
+  }
+})
+
+test('upload boundaries reject unsafe counts and sizes and clean files after controller rejection', async () => {
+  const admin = await Admin.create({ name: 'Upload Admin', email: 'upload-admin@example.com', password: 'admin-pass-123', role: 'admin' })
+  const login = await request(app).post('/api/auth/admin/login').send({ email: admin.email, password: 'admin-pass-123' })
+  const auth = { Authorization: `Bearer ${login.body.token}` }
+  const publicImageDir = require('../src/config/cloudinary').publicImageDir
+  await fs.mkdir(privateUploadDir, { recursive: true })
+  await fs.mkdir(publicImageDir, { recursive: true })
+  const privateBefore = await directoryNames(privateUploadDir)
+  const publicBefore = await directoryNames(publicImageDir)
+  const pdf = Buffer.from('%PDF-1.4\nsynthetic upload boundary fixture\n%%EOF')
+  const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from('synthetic')])
+
+  const rejectedAfterUpload = await request(app)
+    .post('/api/admin/products')
+    .set(auth)
+    .field('model', 'Missing required make')
+    .attach('report', pdf, { filename: 'synthetic.pdf', contentType: 'application/pdf' })
+  assert.equal(rejectedAfterUpload.status, 400)
+  await waitForDirectory(privateUploadDir, privateBefore)
+
+  const oversized = await request(app)
+    .post('/api/admin/products')
+    .set(auth)
+    .field('make', 'Honda').field('model', 'City').field('year', '2022').field('km', '10000').field('price', '5000000')
+    .attach('report', Buffer.alloc(10 * 1024 * 1024 + 1, 0x25), { filename: 'too-large.pdf', contentType: 'application/pdf' })
+  assert.equal(oversized.status, 413)
+  await waitForDirectory(privateUploadDir, privateBefore)
+
+  let excessRequest = request(app)
+    .post('/api/admin/products')
+    .set(auth)
+    .field('make', 'Honda').field('model', 'City').field('year', '2022').field('km', '10000').field('price', '5000000')
+  for (let index = 0; index < 7; index += 1) {
+    excessRequest = excessRequest.attach('images', png, { filename: `image-${index}.png`, contentType: 'image/png' })
+  }
+  const excess = await excessRequest
+  assert.equal(excess.status, 400)
+  await waitForDirectory(publicImageDir, publicBefore)
 })
 
 test('customer cannot access administrator routes', async () => {
@@ -292,6 +522,55 @@ test('demo checkout activates only the authenticated member and persists annual 
   assert.equal(await MembershipPayment.countDocuments({ memberId: member._id, paymentMode: 'demo', status: 'completed' }), 1)
   const duplicate = await request(app).post('/api/payments/demo-complete').set('Authorization', `Bearer ${registration.body.token}`)
   assert.equal(duplicate.status, 409)
+})
+
+test('demo and removed Stripe surfaces cannot activate in production mode', async () => {
+  const registration = await request(app).post('/api/auth/register').send({
+    name: 'Production Gate User', email: 'production-gate@example.com', phone: '+92 300 7654355', password: 'test-pass-123',
+  })
+  const auth = { Authorization: `Bearer ${registration.body.token}` }
+
+  assert.equal((await request(app).post('/api/payments/create-checkout-session').set(auth)).status, 404)
+  assert.equal((await request(app).get('/api/payments/verify-session?session_id=fake').set(auth)).status, 404)
+  assert.equal((await request(app).post('/api/payments/webhook')).status, 404)
+
+  const previousMode = process.env.APP_MODE
+  const previousNodeEnv = process.env.NODE_ENV
+  try {
+    process.env.APP_MODE = 'production'
+    process.env.NODE_ENV = 'production'
+    const demoPayment = await request(app).post('/api/payments/demo-complete').set(auth)
+    const demoAccounts = await request(app).get('/api/demo/accounts')
+    assert.equal(demoPayment.status, 404)
+    assert.equal(demoAccounts.status, 404)
+  } finally {
+    if (previousMode === undefined) delete process.env.APP_MODE
+    else process.env.APP_MODE = previousMode
+    process.env.NODE_ENV = previousNodeEnv
+  }
+})
+
+test('unsafe production configuration is rejected before startup', () => {
+  assert.throws(() => validateRuntimeConfig({
+    APP_MODE: 'production', NODE_ENV: 'production', EMAIL_DELIVERY_MODE: 'development', ENABLE_DEMO_SEED: 'false',
+    PAYMENT_MODE: 'disabled', JWT_SECRET: 'this-is-a-long-enough-production-secret', CLIENT_URL: 'https://cars.example',
+  }), /development email/i)
+  assert.throws(() => validateRuntimeConfig({
+    APP_MODE: 'production', NODE_ENV: 'production', EMAIL_DELIVERY_MODE: 'smtp', ENABLE_DEMO_SEED: 'true',
+    PAYMENT_MODE: 'disabled', JWT_SECRET: 'this-is-a-long-enough-production-secret', CLIENT_URL: 'https://cars.example',
+  }), /demo data/i)
+  assert.throws(() => validateRuntimeConfig({
+    APP_MODE: 'production', NODE_ENV: 'production', EMAIL_DELIVERY_MODE: 'smtp', ENABLE_DEMO_SEED: 'false',
+    PAYMENT_MODE: 'demo', JWT_SECRET: 'this-is-a-long-enough-production-secret', CLIENT_URL: 'https://cars.example',
+  }), /demo membership/i)
+  assert.throws(() => validateRuntimeConfig({
+    APP_MODE: 'production', NODE_ENV: 'production', EMAIL_DELIVERY_MODE: 'smtp', ENABLE_DEMO_SEED: 'false',
+    PAYMENT_MODE: 'disabled', JWT_SECRET: 'change-me', CLIENT_URL: 'http://localhost:5173',
+  }), /JWT_SECRET/i)
+  assert.deepEqual(validateRuntimeConfig({
+    APP_MODE: 'production', NODE_ENV: 'production', EMAIL_DELIVERY_MODE: 'smtp', ENABLE_DEMO_SEED: 'false',
+    PAYMENT_MODE: 'disabled', JWT_SECRET: 'this-is-a-long-enough-production-secret', CLIENT_URL: 'https://cars.example',
+  }), { appMode: 'production', demo: false })
 })
 
 test('auction rejects negative, low, and closed bids and accepts a valid bid', async () => {

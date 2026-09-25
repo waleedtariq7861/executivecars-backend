@@ -5,7 +5,9 @@ const Member = require('../models/Member')
 const Seller = require('../models/Seller')
 const PasswordResetToken = require('../models/PasswordResetToken')
 const { handleControllerError } = require('../utils/http')
+const { isDemoMode } = require('../config/runtime')
 const { sendPasswordResetEmail } = require('../utils/email')
+const { attachSession, clearSession, csrfTokenForSession, sessionTokenFromRequest } = require('../utils/session')
 const {
   normalizePersonName,
   normalizePhone,
@@ -16,6 +18,12 @@ const normalizeEmail = (email = '') => String(email).trim().toLowerCase()
 
 const signToken = (id, role) =>
   jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' })
+
+const sendAuthenticated = (res, token, user, status = 200) => {
+  const body = { user, csrfToken: attachSession(res, token) }
+  if (process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS === 'true' && process.env.NODE_ENV === 'test') body.token = token
+  return res.status(status).json(body)
+}
 
 const accountPayload = (account) => {
   const auctionActive = account.hasActiveSubscription()
@@ -57,7 +65,7 @@ const adminLogin = async (req, res) => {
     }
 
     const token = signToken(admin._id, 'admin')
-    res.json({ token, user: { id: admin._id, name: admin.name, email: admin.email, role: 'admin' } })
+    sendAuthenticated(res, token, { id: admin._id, name: admin.name, email: admin.email, role: 'admin' })
   } catch (err) {
     handleControllerError(res, err, 'Admin sign in failed')
   }
@@ -89,7 +97,7 @@ const accountRegister = async (req, res) => {
 
     const account = await Member.create({ name, email, phone, password, role: 'user' })
     const token = signToken(account._id, 'user')
-    res.status(201).json({ token, user: accountPayload(account) })
+    sendAuthenticated(res, token, accountPayload(account), 201)
   } catch (err) {
     handleControllerError(res, err, 'Registration failed')
   }
@@ -141,7 +149,7 @@ const accountLogin = async (req, res) => {
     await expireMembershipIfNeeded(account)
 
     const token = signToken(account._id, 'user')
-    res.json({ token, user: accountPayload(account) })
+    sendAuthenticated(res, token, accountPayload(account))
   } catch (err) {
     handleControllerError(res, err, 'Sign in failed')
   }
@@ -167,6 +175,28 @@ const changePassword = async (req, res) => {
   }
 }
 
+const session = async (req, res) => {
+  const token = sessionTokenFromRequest(req)
+  const user = req.accountRole === 'admin'
+    ? { id: req.user._id, name: req.user.name, email: req.user.email, role: 'admin' }
+    : req.accountModel === 'seller'
+      ? {
+          id: req.user._id, name: req.user.name, email: req.user.email, phone: req.user.phone,
+          role: 'user', sellerApproved: true,
+          subscriptionStatus: 'inactive', subscriptionExpiry: null,
+          capabilities: { buy: true, sell: true, auction: false },
+        }
+      : accountPayload(req.user)
+  res.set('Cache-Control', 'no-store')
+  res.json({ user, csrfToken: csrfTokenForSession(token) })
+}
+
+const logout = (req, res) => {
+  clearSession(res)
+  res.set('Cache-Control', 'no-store')
+  res.json({ message: 'Signed out successfully' })
+}
+
 const requestPasswordReset = async (req, res) => {
   const genericResponse = { message: 'If that email belongs to an account, password reset instructions will be sent.' }
   try {
@@ -186,9 +216,9 @@ const requestPasswordReset = async (req, res) => {
     let developmentResetUrl
     try {
       await sendPasswordResetEmail(account.email, resetUrl)
-      if (process.env.NODE_ENV !== 'production' && process.env.EMAIL_DELIVERY_MODE === 'development') developmentResetUrl = resetUrl
+      if (isDemoMode() && process.env.EMAIL_DELIVERY_MODE === 'development') developmentResetUrl = resetUrl
     } catch (emailError) {
-      if (process.env.NODE_ENV !== 'production' && process.env.EMAIL_DELIVERY_MODE === 'development') developmentResetUrl = resetUrl
+      if (isDemoMode() && process.env.EMAIL_DELIVERY_MODE === 'development') developmentResetUrl = resetUrl
       else console.error('Password reset email delivery failed:', emailError.message)
     }
 
@@ -230,4 +260,6 @@ module.exports = {
   changePassword,
   requestPasswordReset,
   resetPassword,
+  session,
+  logout,
 }

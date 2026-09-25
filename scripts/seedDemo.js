@@ -11,32 +11,28 @@ const Booking = require('../src/models/Booking')
 const Bid = require('../src/models/Bid')
 const OtpChallenge = require('../src/models/OtpChallenge')
 const MembershipPayment = require('../src/models/MembershipPayment')
+const { demoAccounts: configuredDemoAccounts } = require('../src/config/demoAccounts')
 
 const DEMO_PREFIX = 'executive-cars-demo:'
 const key = name => `${DEMO_PREFIX}${name}`
 const DEMO_OTP = '246810'
 
 const requireDemoSeed = () => {
-  if (process.env.NODE_ENV === 'production') throw new Error('Demo seeding is disabled in production')
+  const { isDemoMode } = require('../src/config/runtime')
+  if (!isDemoMode()) throw new Error('Demo seeding is available only when APP_MODE=demo outside production')
   if (process.env.ENABLE_DEMO_SEED !== 'true') throw new Error('Set ENABLE_DEMO_SEED=true to seed development demo data')
   if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required to create the development OTP challenge')
 }
 
-const demoAccounts = () => ({
-  admin: { name: 'Executive Cars Admin', email: 'admin@executivecars.pk', password: 'Admin@12345', role: 'admin', demoKey: key('admin') },
-  premium: {
-    name: 'Waleed Tariq', email: 'member@executivecars.pk', password: 'Member@12345', phone: '+92 300 1112233', city: 'Islamabad', role: 'user',
-    subscriptionStatus: 'active', subscriptionExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), membershipSource: 'demo', demoKey: key('premium-member'),
-  },
-  regular: {
-    name: 'Demo User', email: 'user@executivecars.pk', password: 'User@12345', phone: '+92 300 2223344', city: 'Rawalpindi', role: 'user',
-    subscriptionStatus: 'inactive', subscriptionExpiry: undefined, membershipSource: undefined, demoKey: key('regular-user'),
-  },
-  bidder: {
-    name: 'Hamza Ali', email: 'bidder@executivecars.pk', password: 'Bidder@12345', phone: '+92 300 3334455', city: 'Lahore', role: 'user',
-    subscriptionStatus: 'active', subscriptionExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), membershipSource: 'demo', demoKey: key('bidder'),
-  },
-})
+const demoAccounts = () => {
+  const accounts = configuredDemoAccounts()
+  return {
+    admin: { ...accounts.admin, demoKey: key('admin') },
+    premium: { ...accounts.premium, demoKey: key('premium-member') },
+    regular: { ...accounts.regular, demoKey: key('regular-user') },
+    bidder: { ...accounts.bidder, demoKey: key('bidder') },
+  }
+}
 
 const syncAccount = async (Model, account) => {
   const existing = await Model.findOne({ email: account.email })
@@ -79,19 +75,19 @@ const seedDemo = async () => {
   })))
 
   const productSpecs = [
-    ['new-corolla', { make: 'Toyota', model: 'Corolla', variant: 'Altis X 1.8 CVT-i', year: 2024, km: 1800, price: 6950000, engine: '1800', fuel: 'Petrol', transmission: 'Auto', color: 'White', city: 'Islamabad', registrationCity: 'Unregistered', bodyType: 'Sedan', assemblyType: 'Local', condition: 'Excellent', verificationStatus: 'verified', inspectionStatus: 'report_available', inspectionScore: 96, listingType: 'new', ownerId: waleed._id, sellerEmail: waleed.email, description: 'Low-mileage showroom-condition local Corolla.' }],
-    ['used-swift', { make: 'Suzuki', model: 'Swift', variant: 'GL CVT', year: 2021, km: 47000, price: 3650000, engine: '1200', fuel: 'Petrol', transmission: 'Auto', color: 'Grey', city: 'Rawalpindi', registrationCity: 'Islamabad', bodyType: 'Hatchback', assemblyType: 'Local', condition: 'Good', verificationStatus: 'verified', inspectionStatus: 'report_available', inspectionScore: 88, listingType: 'used', ownerId: regular._id, sellerEmail: regular.email, description: 'Well-kept automatic Swift with current inspection report.' }],
-    ['used-city', { make: 'Honda', model: 'City', variant: 'Aspire 1.5 CVT', year: 2022, km: 32000, price: 5150000, engine: '1500', fuel: 'Petrol', transmission: 'Auto', color: 'Silver', city: 'Lahore', registrationCity: 'Punjab', bodyType: 'Sedan', assemblyType: 'Local', condition: 'Excellent', verificationStatus: 'verified', inspectionStatus: 'report_available', inspectionScore: 92, listingType: 'used', ownerId: hamza._id, sellerEmail: hamza.email, description: 'One-owner Honda City with documented service history.' }],
+    ['new-corolla', { make: 'Toyota', model: 'Corolla', variant: 'Altis X 1.8 CVT-i', year: 2024, km: 1800, price: 6950000, engine: '1800', fuel: 'Petrol', transmission: 'Auto', color: 'White', city: 'Islamabad', registrationCity: 'Unregistered', bodyType: 'Sedan', assemblyType: 'Local', condition: 'Excellent', verificationStatus: 'verified', inspectionStatus: 'not_available', listingType: 'new', ownerId: waleed._id, sellerEmail: waleed.email, description: 'Low-mileage showroom-condition local Corolla.' }],
+    ['used-swift', { make: 'Suzuki', model: 'Swift', variant: 'GL CVT', year: 2021, km: 47000, price: 3650000, engine: '1200', fuel: 'Petrol', transmission: 'Auto', color: 'Grey', city: 'Rawalpindi', registrationCity: 'Islamabad', bodyType: 'Hatchback', assemblyType: 'Local', condition: 'Good', verificationStatus: 'verified', inspectionStatus: 'not_available', listingType: 'used', ownerId: regular._id, sellerEmail: regular.email, description: 'Well-kept automatic Swift with documented service history.' }],
+    ['used-city', { make: 'Honda', model: 'City', variant: 'Aspire 1.5 CVT', year: 2022, km: 32000, price: 5150000, engine: '1500', fuel: 'Petrol', transmission: 'Auto', color: 'Silver', city: 'Lahore', registrationCity: 'Punjab', bodyType: 'Sedan', assemblyType: 'Local', condition: 'Excellent', verificationStatus: 'verified', inspectionStatus: 'not_available', listingType: 'used', ownerId: hamza._id, sellerEmail: hamza.email, description: 'One-owner Honda City with documented service history.' }],
     ['used-sportage', { make: 'Kia', model: 'Sportage', variant: 'Alpha', year: 2022, km: 28000, price: 7350000, engine: '2000', fuel: 'Petrol', transmission: 'Auto', color: 'Blue', city: 'Karachi', registrationCity: 'Sindh', bodyType: 'SUV', assemblyType: 'Local', condition: 'Excellent', verificationStatus: 'pending', inspectionStatus: 'pending', listingType: 'used', ownerId: waleed._id, sellerEmail: waleed.email, description: 'Family SUV awaiting final inspection report.' }],
     ['used-yaris', { make: 'Toyota', model: 'Yaris', variant: 'ATIV X CVT 1.5', year: 2023, km: 16500, price: 4900000, engine: '1500', fuel: 'Petrol', transmission: 'Auto', color: 'Black', city: 'Islamabad', registrationCity: 'Islamabad', bodyType: 'Sedan', assemblyType: 'Local', condition: 'Excellent', verificationStatus: 'verified', inspectionStatus: 'not_available', listingType: 'used', ownerId: regular._id, sellerEmail: regular.email, description: 'Low-mileage Yaris suitable for a first family car.' }],
   ]
   const products = Object.fromEntries(await Promise.all(productSpecs.map(async ([name, fields]) => [name, await syncRecord(Product, key(`product:${name}`), { ...fields, status: 'available', images: [] })])))
 
   const auctionSpecs = [
-    ['live-civic', { make: 'Honda', model: 'Civic', variant: 'Oriel 1.8 i-VTEC CVT', year: 2020, km: 61000, engine: '1800', fuel: 'Petrol', transmission: 'Auto', color: 'Black', city: 'Islamabad', registrationCity: 'Islamabad', bodyType: 'Sedan', assemblyType: 'Local', condition: 'Good', verificationStatus: 'verified', inspectionStatus: 'report_available', inspectionScore: 89, basePrice: 4550000, reservePrice: 4800000, currentBid: 4850000, minimumBidIncrement: 50000, auctionStart: new Date(now - day), auctionEnd: new Date(now.getTime() + day), status: 'active', ownerId: waleed._id, sellerEmail: waleed.email, description: 'Live demo auction: verified Civic with service record.', images: [] }],
-    ['upcoming-fortuner', { make: 'Toyota', model: 'Fortuner', variant: 'Sigma 4 2.8', year: 2021, km: 52000, engine: '2800', fuel: 'Diesel', transmission: 'Auto', color: 'White', city: 'Lahore', registrationCity: 'Punjab', bodyType: 'SUV', assemblyType: 'Local', condition: 'Excellent', verificationStatus: 'verified', inspectionStatus: 'report_available', inspectionScore: 94, basePrice: 14500000, reservePrice: 15300000, currentBid: 14500000, minimumBidIncrement: 100000, auctionStart: new Date(now.getTime() + day), auctionEnd: new Date(now.getTime() + 3 * day), status: 'active', ownerId: hamza._id, sellerEmail: hamza.email, description: 'Upcoming demo auction: premium Fortuner.', images: [] }],
-    ['closed-alto-sold', { make: 'Suzuki', model: 'Alto', variant: 'VXL AGS', year: 2022, km: 24000, engine: '660', fuel: 'Petrol', transmission: 'Auto', color: 'Pearl White', city: 'Rawalpindi', registrationCity: 'Punjab', bodyType: 'Hatchback', assemblyType: 'Local', condition: 'Excellent', verificationStatus: 'verified', inspectionStatus: 'report_available', inspectionScore: 91, basePrice: 2450000, reservePrice: 2550000, currentBid: 2650000, minimumBidIncrement: 50000, auctionStart: new Date(now.getTime() - 4 * day), auctionEnd: new Date(now.getTime() - day), status: 'ended', ownerId: regular._id, sellerEmail: regular.email, description: 'Closed sold demo auction: reserve met.', images: [] }],
-    ['closed-corolla-unsold', { make: 'Toyota', model: 'Corolla', variant: 'GLi Automatic 1.3', year: 2018, km: 98000, engine: '1300', fuel: 'Petrol', transmission: 'Auto', color: 'Silver', city: 'Karachi', registrationCity: 'Sindh', bodyType: 'Sedan', assemblyType: 'Local', condition: 'Fair', verificationStatus: 'verified', inspectionStatus: 'report_available', inspectionScore: 78, basePrice: 3350000, reservePrice: 4000000, currentBid: 3500000, minimumBidIncrement: 50000, auctionStart: new Date(now.getTime() - 6 * day), auctionEnd: new Date(now.getTime() - 2 * day), status: 'ended', ownerId: regular._id, sellerEmail: regular.email, description: 'Closed unsold demo auction: reserve was not met.', images: [] }],
+    ['live-civic', { make: 'Honda', model: 'Civic', variant: 'Oriel 1.8 i-VTEC CVT', year: 2020, km: 61000, engine: '1800', fuel: 'Petrol', transmission: 'Auto', color: 'Black', city: 'Islamabad', registrationCity: 'Islamabad', bodyType: 'Sedan', assemblyType: 'Local', condition: 'Good', verificationStatus: 'verified', inspectionStatus: 'not_available', basePrice: 4550000, reservePrice: 4800000, currentBid: 4850000, minimumBidIncrement: 50000, auctionStart: new Date(now - day), auctionEnd: new Date(now.getTime() + day), status: 'active', ownerId: waleed._id, sellerEmail: waleed.email, description: 'Live demo auction: verified Civic with service record.', images: [] }],
+    ['upcoming-fortuner', { make: 'Toyota', model: 'Fortuner', variant: 'Sigma 4 2.8', year: 2021, km: 52000, engine: '2800', fuel: 'Diesel', transmission: 'Auto', color: 'White', city: 'Lahore', registrationCity: 'Punjab', bodyType: 'SUV', assemblyType: 'Local', condition: 'Excellent', verificationStatus: 'verified', inspectionStatus: 'not_available', basePrice: 14500000, reservePrice: 15300000, currentBid: 14500000, minimumBidIncrement: 100000, auctionStart: new Date(now.getTime() + day), auctionEnd: new Date(now.getTime() + 3 * day), status: 'active', ownerId: hamza._id, sellerEmail: hamza.email, description: 'Upcoming demo auction: premium Fortuner.', images: [] }],
+    ['closed-alto-sold', { make: 'Suzuki', model: 'Alto', variant: 'VXL AGS', year: 2022, km: 24000, engine: '660', fuel: 'Petrol', transmission: 'Auto', color: 'Pearl White', city: 'Rawalpindi', registrationCity: 'Punjab', bodyType: 'Hatchback', assemblyType: 'Local', condition: 'Excellent', verificationStatus: 'verified', inspectionStatus: 'not_available', basePrice: 2450000, reservePrice: 2550000, currentBid: 2650000, minimumBidIncrement: 50000, auctionStart: new Date(now.getTime() - 4 * day), auctionEnd: new Date(now.getTime() - day), status: 'ended', ownerId: regular._id, sellerEmail: regular.email, description: 'Closed sold demo auction: reserve met.', images: [] }],
+    ['closed-corolla-unsold', { make: 'Toyota', model: 'Corolla', variant: 'GLi Automatic 1.3', year: 2018, km: 98000, engine: '1300', fuel: 'Petrol', transmission: 'Auto', color: 'Silver', city: 'Karachi', registrationCity: 'Sindh', bodyType: 'Sedan', assemblyType: 'Local', condition: 'Fair', verificationStatus: 'verified', inspectionStatus: 'not_available', basePrice: 3350000, reservePrice: 4000000, currentBid: 3500000, minimumBidIncrement: 50000, auctionStart: new Date(now.getTime() - 6 * day), auctionEnd: new Date(now.getTime() - 2 * day), status: 'ended', ownerId: regular._id, sellerEmail: regular.email, description: 'Closed unsold demo auction: reserve was not met.', images: [] }],
   ]
   const auctions = Object.fromEntries(await Promise.all(auctionSpecs.map(async ([name, fields]) => [name, await syncRecord(Car, key(`auction:${name}`), { ...fields, highestBidder: name === 'upcoming-fortuner' ? undefined : (name === 'closed-alto-sold' || name === 'live-civic' ? waleed._id : hamza._id), bidCount: name === 'live-civic' ? 3 : name === 'closed-alto-sold' ? 2 : name === 'closed-corolla-unsold' ? 1 : 0 })])))
 
@@ -154,4 +150,4 @@ const run = async () => {
 
 if (require.main === module) run()
 
-module.exports = { DEMO_OTP, seedDemo, resetDemo }
+module.exports = { DEMO_OTP, demoAccounts, seedDemo, resetDemo }

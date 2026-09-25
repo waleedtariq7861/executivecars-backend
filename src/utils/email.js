@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer')
 
-const developmentDelivery = process.env.NODE_ENV !== 'production' && process.env.EMAIL_DELIVERY_MODE === 'development'
+const { isDemoMode } = require('../config/runtime')
+const developmentDelivery = isDemoMode() && process.env.EMAIL_DELIVERY_MODE === 'development'
 const transporter = developmentDelivery
   ? nodemailer.createTransport({ jsonTransport: true })
   : nodemailer.createTransport({
