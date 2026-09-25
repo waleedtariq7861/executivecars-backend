@@ -9,6 +9,7 @@
     "seed:test-users": "node scripts/seedDemo.js",
     "seed:demo": "node scripts/seedDemo.js",
     "seed:demo:reset": "node scripts/seedDemo.js --reset",
+    "bootstrap:admin": "node scripts/bootstrapAdmin.js",
     "repair:inspection-reports": "node scripts/repairInspectionReports.js",
     "repair:inspection-reports:apply": "node scripts/repairInspectionReports.js --apply",
     "check": "node scripts/checkSyntax.js",
