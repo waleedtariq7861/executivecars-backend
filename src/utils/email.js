@@ -1,20 +1,55 @@
+const axios = require('axios')
 const nodemailer = require('nodemailer')
 
 const { isDemoMode } = require('../config/runtime')
-const developmentDelivery = isDemoMode() && process.env.EMAIL_DELIVERY_MODE === 'development'
-const transporter = developmentDelivery
-  ? nodemailer.createTransport({ jsonTransport: true })
-  : nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || '').replace(/\s+/g, ''),
-      },
-    })
+
+const sendEmail = async ({ to, subject, html }) => {
+  const mode = String(process.env.EMAIL_DELIVERY_MODE || 'smtp').trim().toLowerCase()
+
+  if (mode === 'resend') {
+    const apiKey = String(process.env.RESEND_API_KEY || '').trim()
+    const sender = String(process.env.RESEND_FROM_EMAIL || '').trim()
+    if (!apiKey || !sender) throw new Error('Resend email delivery requires RESEND_API_KEY and RESEND_FROM_EMAIL')
+
+    try {
+      const { data } = await axios.post('https://api.resend.com/emails', {
+        from: `Executive Cars <${sender}>`,
+        to: [to],
+        subject,
+        html,
+      }, {
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        timeout: 10000,
+      })
+      if (!data?.id) throw new Error('Resend did not confirm email acceptance')
+      return data
+    } catch (error) {
+      const status = error.response?.status
+      throw new Error(status ? `Resend email request failed (HTTP ${status})` : 'Resend email request failed')
+    }
+  }
+
+  if (mode !== 'smtp' && mode !== 'development') throw new Error('Unsupported email delivery mode')
+  if (mode === 'development' && !isDemoMode()) throw new Error('Development email delivery requires demo mode')
+  const transporter = mode === 'development'
+    ? nodemailer.createTransport({ jsonTransport: true })
+    : nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: (process.env.EMAIL_APP_PASSWORD || process.env.EMAIL_PASS || '').replace(/\s+/g, ''),
+        },
+      })
+  return transporter.sendMail({
+    from: `"Executive Cars" <${process.env.EMAIL_USER}>`,
+    to,
+    subject,
+    html,
+  })
+}
 
 const sendOTPEmail = async (to, otp) => {
-  await transporter.sendMail({
-    from: `"Executive Cars" <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to,
     subject: 'Your Executive Cars Verification Code',
     html: `
@@ -36,8 +71,7 @@ const sendOTPEmail = async (to, otp) => {
 }
 
 const sendSellerCredentials = async (to, name, password) => {
-  await transporter.sendMail({
-    from: `"Executive Cars" <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to,
     subject: 'Your Executive Cars Seller Account is Ready',
     html: `
@@ -64,8 +98,7 @@ const sendSellerCredentials = async (to, name, password) => {
 
 const sendBookingConfirmationEmail = async (to, name, date, branch) => {
   const formatted = new Date(date).toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })
-  await transporter.sendMail({
-    from: `"Executive Cars" <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to,
     subject: 'Your Inspection Booking is Confirmed — Executive Cars',
     html: `
@@ -83,7 +116,7 @@ const sendBookingConfirmationEmail = async (to, name, date, branch) => {
             <p style="margin: 0; color: #0f172a; font-weight: 700;">${branch}</p>
           </div>
           <p style="color: #64748b;">Our team will review your booking. You will receive an update when its status changes.</p>
-          <p style="color: #94a3b8; font-size: 13px; margin-top: 24px;">If you have any questions, reply to this email or contact us at info@executivecars.pk</p>
+          <p style="color: #94a3b8; font-size: 13px; margin-top: 24px;">Our team will contact you when your booking has been reviewed.</p>
         </div>
       </div>
     `,
@@ -91,8 +124,7 @@ const sendBookingConfirmationEmail = async (to, name, date, branch) => {
 }
 
 const sendPasswordResetEmail = async (to, resetUrl) => {
-  await transporter.sendMail({
-    from: `"Executive Cars" <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to,
     subject: 'Reset your Executive Cars password',
     html: `

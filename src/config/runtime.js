@@ -5,11 +5,17 @@ const placeholderSecret = value => !value || value.length < 32 || /your_|change[
 
 const validateRuntimeConfig = (env = process.env) => {
   const mode = appMode(env)
+  const emailMode = String(env.EMAIL_DELIVERY_MODE || 'smtp').trim().toLowerCase()
   if (!['demo', 'production'].includes(mode)) throw new Error('APP_MODE must be demo or production')
+  if (!['development', 'smtp', 'resend'].includes(emailMode)) throw new Error('EMAIL_DELIVERY_MODE must be development, smtp, or resend')
+  if (emailMode === 'resend' && (!String(env.RESEND_API_KEY || '').trim() ||
+    !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(String(env.RESEND_FROM_EMAIL || '').trim()))) {
+    throw new Error('Resend email delivery requires RESEND_API_KEY and a valid RESEND_FROM_EMAIL')
+  }
   if (mode === 'demo' && env.NODE_ENV === 'production') throw new Error('APP_MODE=demo cannot run with NODE_ENV=production')
   if (mode === 'production') {
     if (env.NODE_ENV !== 'production') throw new Error('APP_MODE=production requires NODE_ENV=production')
-    if (env.EMAIL_DELIVERY_MODE === 'development') throw new Error('Production mode cannot use development email delivery')
+    if (emailMode === 'development') throw new Error('Production mode cannot use development email delivery')
     if (env.REQUIRE_CLOUDINARY === 'true' && [env.CLOUDINARY_CLOUD_NAME, env.CLOUDINARY_API_KEY, env.CLOUDINARY_API_SECRET]
       .some(value => !value || /^(your_|local-development)/i.test(value))) {
       throw new Error('Durable uploads require all three Cloudinary credentials')
