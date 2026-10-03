@@ -1,4 +1,5 @@
 const Car = require('../models/Car')
+const { hasMetReserve } = require('./auctionOutcome')
 
 // Finds auctions whose end time has passed but are still marked active,
 // flips them to 'ended', and notifies anyone watching that auction room.
@@ -12,7 +13,7 @@ const closeExpiredAuctions = async (io) => {
       await car.save()
 
       if (io) {
-        const reserveMet = !car.reservePrice || car.currentBid >= car.reservePrice
+        const reserveMet = hasMetReserve(car)
         io.to(car._id.toString()).emit('auction-ended', {
           carId: car._id.toString(),
           finalBid: car.currentBid,

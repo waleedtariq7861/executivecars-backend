@@ -675,6 +675,67 @@ test('only administrators can view bid history and close an auction', async () =
   const wonCars = await request(app).get('/api/member/won').set('Authorization', `Bearer ${memberToken}`)
   assert.equal(wonCars.status, 200)
   assert.ok(wonCars.body.every(car => car._id !== String(reserveAuction._id)))
+
+  const history = await request(app).get('/api/member/bids').set('Authorization', `Bearer ${memberToken}`)
+  assert.equal(history.status, 200)
+  const unsoldBid = history.body.find(bid => bid.carId._id === String(reserveAuction._id))
+  assert.deepEqual(unsoldBid.auctionState, { status: 'unsold', biddingOpen: false })
+  assert.equal(unsoldBid.carId.reservePrice, 4000000)
+  const winningBid = history.body.find(bid => bid.carId._id === String(auction._id))
+  assert.deepEqual(winningBid.auctionState, { status: 'won', biddingOpen: false })
+})
+
+test('bid history outcomes agree with Won Cars and stats across reserve and lifecycle states', async () => {
+  const token = await customerToken()
+  const member = await Member.findOne({ email: 'customer@example.com' })
+  const other = await Member.create({ name: 'Other Bidder', email: 'other-outcome@example.com', phone: '+923001112233', password: 'test-pass-123' })
+  const now = Date.now()
+  const cases = [
+    ['below', 'unsold', false, { reservePrice: 4000000, currentBid: 3500000 }],
+    ['equal', 'won', false, { reservePrice: 4000000, currentBid: 4000000 }],
+    ['above', 'won', false, { reservePrice: 4000000, currentBid: 4500000 }],
+    ['no-reserve', 'won', false, {}],
+    ['lost', 'lost', false, { highestBidder: other._id }],
+    ['leading', 'leading', true, { status: 'active' }],
+    ['outbid', 'outbid', true, { status: 'active', highestBidder: other._id }],
+    ['upcoming', 'upcoming', false, { status: 'active', auctionStart: new Date(now + 600000) }],
+    ['expired', 'awaiting_result', false, { status: 'active', auctionEnd: new Date(now - 1000) }],
+    ['cancelled', 'cancelled', false, { status: 'cancelled' }],
+  ]
+  const expected = new Map()
+  for (const [model, status, biddingOpen, fields] of cases) {
+    const car = await Car.create({
+      make: 'Toyota', model, year: 2018, km: 98000, engine: '1300', basePrice: 3350000,
+      currentBid: 3500000, highestBidder: member._id, bidCount: 1, status: 'ended',
+      auctionStart: new Date(now - 600000), auctionEnd: new Date(now + 3600000), ...fields,
+    })
+    await Bid.create({ carId: car._id, bidderId: member._id, amount: 3500000 })
+    expected.set(String(car._id), { status, biddingOpen })
+  }
+  const missingCarId = new mongoose.Types.ObjectId()
+  await Bid.create({ carId: missingCarId, bidderId: member._id, amount: 1000000 })
+
+  const history = await request(app).get('/api/member/bids').set('Authorization', `Bearer ${token}`)
+  assert.equal(history.status, 200)
+  assert.equal(history.body.length, cases.length + 1)
+  for (const bid of history.body) {
+    assert.equal(bid.bidderId, String(member._id))
+    if (!bid.carId) {
+      assert.deepEqual(bid.auctionState, { status: 'unavailable', biddingOpen: false })
+    } else {
+      assert.deepEqual(bid.auctionState, expected.get(bid.carId._id))
+      assert.ok(bid.carId.auctionStart)
+      assert.equal(bid.carId.sellerEmail, undefined)
+    }
+  }
+  const won = await request(app).get('/api/member/won').set('Authorization', `Bearer ${token}`)
+  const stats = await request(app).get('/api/member/stats').set('Authorization', `Bearer ${token}`)
+  assert.equal(won.status, 200)
+  assert.equal(stats.status, 200)
+  const historyWins = history.body.filter(bid => bid.auctionState.status === 'won').map(bid => bid.carId._id).sort()
+  assert.deepEqual(won.body.map(car => car._id).sort(), historyWins)
+  assert.equal(stats.body.wonCars, 3)
+  assert.equal(stats.body.totalBids, cases.length + 1)
 })
 
 test('dataset import requires administrator authorization', async () => {
