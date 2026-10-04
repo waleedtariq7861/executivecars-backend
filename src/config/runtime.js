@@ -7,6 +7,13 @@ const validateRuntimeConfig = (env = process.env) => {
   const mode = appMode(env)
   const emailMode = String(env.EMAIL_DELIVERY_MODE || 'smtp').trim().toLowerCase()
   if (!['demo', 'production'].includes(mode)) throw new Error('APP_MODE must be demo or production')
+  if (env.ENABLE_HOSTED_DEMO_MEMBERSHIP !== undefined && !['true', 'false'].includes(env.ENABLE_HOSTED_DEMO_MEMBERSHIP)) {
+    throw new Error('ENABLE_HOSTED_DEMO_MEMBERSHIP must be true or false')
+  }
+  if (env.ENABLE_HOSTED_DEMO_MEMBERSHIP === 'true' &&
+    (mode !== 'production' || env.NODE_ENV !== 'production' || env.PAYMENT_MODE !== 'disabled')) {
+    throw new Error('Hosted membership simulation requires production runtime and PAYMENT_MODE=disabled')
+  }
   if (!['development', 'smtp', 'resend'].includes(emailMode)) throw new Error('EMAIL_DELIVERY_MODE must be development, smtp, or resend')
   if (emailMode === 'resend' && (!String(env.RESEND_API_KEY || '').trim() ||
     !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(String(env.RESEND_FROM_EMAIL || '').trim()))) {

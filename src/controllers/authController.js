@@ -36,6 +36,9 @@ const accountPayload = (account) => {
     sellerApproved: Boolean(account.sellerApproved),
     subscriptionStatus: auctionActive ? 'active' : (account.subscriptionStatus === 'active' ? 'expired' : account.subscriptionStatus),
     subscriptionExpiry: account.subscriptionExpiry,
+    subscriptionPlan: account.subscriptionPlan,
+    subscriptionStartedAt: account.subscriptionStartedAt,
+    membershipSource: account.membershipSource,
     capabilities: {
       buy: true,
       sell: true,

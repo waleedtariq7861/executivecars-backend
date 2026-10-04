@@ -5,6 +5,7 @@ process.env.ML_API_URL = ''
 process.env.EMAIL_DELIVERY_MODE = 'development'
 process.env.ENABLE_DEMO_SEED = 'true'
 process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = 'true'
+process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
 
 const { before, after, beforeEach, test } = require('node:test')
 const assert = require('node:assert/strict')
@@ -13,7 +14,7 @@ const crypto = require('crypto')
 const fs = require('fs/promises')
 const path = require('path')
 const request = require('supertest')
-const { MongoMemoryServer } = require('mongodb-memory-server')
+const { MongoMemoryReplSet } = require('mongodb-memory-server')
 const { createApp } = require('../server/app')
 const Product = require('../src/models/Product')
 const Car = require('../src/models/Car')
@@ -30,7 +31,7 @@ let database
 let app
 
 before(async () => {
-  database = await MongoMemoryServer.create()
+  database = await MongoMemoryReplSet.create({ replSet: { count: 1, storageEngine: 'wiredTiger' } })
   await mongoose.connect(database.getUri())
   app = createApp()
 })
@@ -571,6 +572,96 @@ test('unsafe production configuration is rejected before startup', () => {
     APP_MODE: 'production', NODE_ENV: 'production', EMAIL_DELIVERY_MODE: 'smtp', ENABLE_DEMO_SEED: 'false',
     PAYMENT_MODE: 'disabled', JWT_SECRET: 'this-is-a-long-enough-production-secret', CLIENT_URL: 'https://cars.example',
   }), { appMode: 'production', demo: false })
+})
+
+test('hosted membership flag is explicit and does not enable global demo mode', () => {
+  const { demoPaymentsEnabled } = require('../src/config/auctionMembership')
+  const base = { APP_MODE: 'production', NODE_ENV: 'production', PAYMENT_MODE: 'disabled',
+    EMAIL_DELIVERY_MODE: 'smtp', JWT_SECRET: 'this-is-a-long-enough-production-secret', CLIENT_URL: 'https://cars.example' }
+  assert.equal(demoPaymentsEnabled(base), false)
+  assert.equal(demoPaymentsEnabled({ ...base, ENABLE_HOSTED_DEMO_MEMBERSHIP: 'true' }), true)
+  assert.deepEqual(validateRuntimeConfig({ ...base, ENABLE_HOSTED_DEMO_MEMBERSHIP: 'true' }), { appMode: 'production', demo: false })
+  for (const value of ['', 'TRUE', '1', 'yes']) assert.throws(() => validateRuntimeConfig({ ...base, ENABLE_HOSTED_DEMO_MEMBERSHIP: value }), /must be true or false/)
+  assert.throws(() => validateRuntimeConfig({ ...base, ENABLE_HOSTED_DEMO_MEMBERSHIP: 'true', PAYMENT_MODE: 'demo' }), /Hosted membership/)
+  assert.throws(() => validateRuntimeConfig({ NODE_ENV: 'test', APP_MODE: 'demo', ENABLE_HOSTED_DEMO_MEMBERSHIP: 'true' }), /Hosted membership/)
+})
+
+test('hosted simulation uses cookies and CSRF, restores access and preserves it when disabled', async () => {
+  const browser = request.agent(app)
+  const registration = await browser.post('/api/auth/register').send({
+    name: 'Hosted Customer', email: 'hosted@example.com', phone: '+923007654333', password: 'test-pass-123',
+  })
+  const keys = ['NODE_ENV', 'APP_MODE', 'PAYMENT_MODE', 'ENABLE_HOSTED_DEMO_MEMBERSHIP']
+  const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]))
+  try {
+    Object.assign(process.env, { NODE_ENV: 'production', APP_MODE: 'production', PAYMENT_MODE: 'disabled', ENABLE_HOSTED_DEMO_MEMBERSHIP: 'true' })
+    const capabilities = await request(app).get('/api/payments/capabilities')
+    assert.equal(capabilities.body.activationMode, 'demo')
+    assert.deepEqual(Object.keys(capabilities.body).sort(), ['activationMode', 'amount', 'currency', 'durationYears', 'plan'])
+    assert.match(capabilities.headers['cache-control'], /no-store/)
+    assert.equal((await request(app).post('/api/payments/demo-complete')).status, 401)
+    assert.equal((await browser.post('/api/payments/demo-complete').set('Origin', process.env.CLIENT_URL)).status, 403)
+    assert.equal((await browser.post('/api/payments/demo-complete').set('X-CSRF-Token', registration.body.csrfToken)).status, 403)
+    const activate = () => browser.post('/api/payments/demo-complete').set('Origin', process.env.CLIENT_URL)
+      .set('X-CSRF-Token', registration.body.csrfToken)
+    const completed = await activate().send({ memberId: new mongoose.Types.ObjectId(), amount: 1, subscriptionExpiry: '2099-01-01' })
+    assert.equal(completed.status, 201, JSON.stringify(completed.body))
+    assert.equal(completed.body.memberId, registration.body.user.id)
+    assert.equal(completed.body.amount, capabilities.body.amount)
+    const session = await browser.get('/api/auth/session')
+    assert.equal(session.body.user.capabilities.auction, true)
+    assert.equal(session.body.user.membershipSource, 'demo')
+    assert.equal(session.body.user.subscriptionExpiry, completed.body.subscriptionExpiry)
+    assert.equal((await activate()).status, 409)
+    assert.equal((await request(app).get('/api/demo/accounts')).status, 404)
+    assert.equal((await request(app).post('/api/payments/create-checkout-session')).status, 404)
+    process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
+    assert.equal((await request(app).get('/api/payments/capabilities')).body.activationMode, 'unavailable')
+    assert.equal((await activate()).status, 404)
+    assert.equal((await browser.get('/api/cars?phase=all')).status, 200)
+    assert.equal(await MembershipPayment.countDocuments({ memberId: registration.body.user.id }), 1)
+  } finally {
+    for (const key of keys) previous[key] === undefined ? delete process.env[key] : process.env[key] = previous[key]
+  }
+})
+
+test('activation rejects administrators and concurrent attempts never extend or duplicate membership', async () => {
+  const token = await inactiveCustomerToken()
+  const admin = await Admin.create({ name: 'Membership Admin', email: 'membership-admin@example.com', password: 'admin-pass-123' })
+  const login = await request(app).post('/api/auth/admin/login').send({ email: admin.email, password: 'admin-pass-123' })
+  assert.equal((await request(app).post('/api/payments/demo-complete').set('Authorization', `Bearer ${login.body.token}`)).status, 403)
+  const responses = await Promise.all(Array.from({ length: 3 }, () => request(app).post('/api/payments/demo-complete').set('Authorization', `Bearer ${token}`)))
+  assert.deepEqual(responses.map(response => response.status).sort(), [201, 409, 409])
+  const event = await MembershipPayment.findOne()
+  const member = await Member.findById(event.memberId)
+  assert.equal(await MembershipPayment.countDocuments(), 1)
+  assert.equal(member.subscriptionExpiry.toISOString(), responses.find(response => response.status === 201).body.subscriptionExpiry)
+})
+
+test('event-write failure rolls membership back and a later activation can succeed', async () => {
+  const token = await inactiveCustomerToken()
+  const original = MembershipPayment.create
+  try {
+    MembershipPayment.create = async () => { throw new Error('Injected simulation-record failure') }
+    assert.equal((await request(app).post('/api/payments/demo-complete').set('Authorization', `Bearer ${token}`)).status, 500)
+    const member = await Member.findOne({ email: 'inactive-customer@example.com' })
+    assert.equal(member.subscriptionStatus, 'inactive')
+    assert.equal(member.subscriptionExpiry, undefined)
+    assert.equal(await MembershipPayment.countDocuments(), 0)
+  } finally { MembershipPayment.create = original }
+  assert.equal((await request(app).post('/api/payments/demo-complete').set('Authorization', `Bearer ${token}`)).status, 201)
+})
+
+test('expired or missing-expiry memberships can activate for a new server-owned year', async () => {
+  const token = await inactiveCustomerToken()
+  for (const expiry of [new Date(Date.now() - 1000), null]) {
+    await Member.updateOne({ email: 'inactive-customer@example.com' }, { subscriptionStatus: 'active', subscriptionExpiry: expiry })
+    const completed = await request(app).post('/api/payments/demo-complete').set('Authorization', `Bearer ${token}`)
+    assert.equal(completed.status, 201)
+    const expected = new Date(completed.body.subscriptionStartedAt)
+    expected.setFullYear(expected.getFullYear() + 1)
+    assert.equal(completed.body.subscriptionExpiry, expected.toISOString())
+  }
 })
 
 test('auction rejects negative, low, and closed bids and accepts a valid bid', async () => {
