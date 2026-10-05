@@ -11,6 +11,7 @@ const { escapeRegex, handleControllerError, pick } = require('../utils/http')
 const { strictNumber } = require('../utils/inputValidation')
 const { toInspectionSafeObject } = require('../utils/inspectionReport')
 const { toBookingObject } = require('../utils/bookingDto')
+const { hasMetReserve } = require('../utils/auctionOutcome')
 
 const toAdminAuctionObject = car => toInspectionSafeObject(car, { reportPath: `/documents/auctions/${car._id}/report` })
 const toAdminProductObject = product => toInspectionSafeObject(product, { reportPath: `/documents/products/${product._id}/report` })
@@ -301,7 +302,7 @@ const getAuctionResult = async (req, res) => {
     const auction = await Car.findById(req.params.id).populate('highestBidder', 'name email')
     if (!auction) return res.status(404).json({ message: 'Auction not found' })
     const bids = await Bid.find({ carId: auction._id }).sort({ createdAt: -1 }).populate('bidderId', 'name email')
-    const reserveMet = !auction.reservePrice || auction.currentBid >= auction.reservePrice
+    const reserveMet = hasMetReserve(auction)
     const winner = reserveMet && auction.highestBidder
       ? { _id: auction.highestBidder._id, name: auction.highestBidder.name, email: auction.highestBidder.email }
       : null
@@ -320,7 +321,7 @@ const closeAuction = async (req, res) => {
       { new: true, runValidators: true },
     ).populate('highestBidder', 'name email')
     if (!auction) return res.status(409).json({ message: 'Auction is already closed or does not exist' })
-    const reserveMet = !auction.reservePrice || auction.currentBid >= auction.reservePrice
+    const reserveMet = hasMetReserve(auction)
     const io = req.app.get('io')
     io?.to(auction._id.toString()).emit('auction-ended', {
       carId: auction._id.toString(), finalBid: auction.currentBid,

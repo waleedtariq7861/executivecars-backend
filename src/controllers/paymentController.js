@@ -18,6 +18,7 @@ const requireMemberAccount = (req, res) => {
 }
 
 const membershipPayload = member => ({
+  memberId: member._id,
   subscriptionStatus: member.subscriptionStatus,
   subscriptionPlan: member.subscriptionPlan,
   subscriptionStartedAt: member.subscriptionStartedAt,
@@ -30,7 +31,9 @@ const membershipPayload = member => ({
 const completeDemoPayment = async (req, res) => {
   try {
     if (!requireMemberAccount(req, res)) return
-    if (!demoPaymentsEnabled()) return res.status(404).json({ message: 'Route not found' })
+    if (!demoPaymentsEnabled()) return res.status(404).json({
+      message: 'Membership activation is currently unavailable.', code: 'MEMBERSHIP_UNAVAILABLE',
+    })
     const member = req.user
     if (member.hasActiveSubscription()) return res.status(409).json({ message: 'Your auction membership is already active.' })
 
@@ -40,37 +43,41 @@ const completeDemoPayment = async (req, res) => {
     const expiresAt = new Date(startedAt)
     expiresAt.setFullYear(expiresAt.getFullYear() + AUCTION_MEMBERSHIP_DURATION_YEARS)
 
-    const updated = await Member.findOneAndUpdate(
-      {
-        _id: member._id,
-        $or: [
-          { subscriptionStatus: { $ne: 'active' } },
-          { subscriptionExpiry: { $lte: startedAt } },
-          { subscriptionExpiry: { $exists: false } },
-        ],
-      },
-      {
-        $set: {
-          subscriptionStatus: 'active',
-          subscriptionPlan: AUCTION_MEMBERSHIP_PLAN,
-          subscriptionStartedAt: startedAt,
-          subscriptionExpiry: expiresAt,
-          subscriptionUpdatedAt: startedAt,
-          membershipSource: 'demo',
+    const updated = await Member.db.transaction(async session => {
+      const activated = await Member.findOneAndUpdate(
+        {
+          _id: member._id,
+          $or: [
+            { subscriptionStatus: { $ne: 'active' } },
+            { subscriptionExpiry: { $lte: startedAt } },
+            { subscriptionExpiry: null },
+          ],
         },
-      },
-      { new: true, runValidators: true },
-    )
-    if (!updated) return res.status(409).json({ message: 'Your auction membership is already active.' })
+        {
+          $set: {
+            subscriptionStatus: 'active',
+            subscriptionPlan: AUCTION_MEMBERSHIP_PLAN,
+            subscriptionStartedAt: startedAt,
+            subscriptionExpiry: expiresAt,
+            subscriptionUpdatedAt: startedAt,
+            membershipSource: 'demo',
+          },
+        },
+        { new: true, runValidators: true, session },
+      )
+      if (!activated) return null
 
-    await MembershipPayment.create({
-      memberId: updated._id,
-      amount: AUCTION_MEMBERSHIP_PRICE,
-      currency: AUCTION_MEMBERSHIP_CURRENCY,
-      plan: AUCTION_MEMBERSHIP_PLAN,
-      paymentMode: 'demo',
-      status: 'completed',
+      await MembershipPayment.create([{
+        memberId: activated._id,
+        amount: AUCTION_MEMBERSHIP_PRICE,
+        currency: AUCTION_MEMBERSHIP_CURRENCY,
+        plan: AUCTION_MEMBERSHIP_PLAN,
+        paymentMode: 'demo',
+        status: 'completed',
+      }], { session })
+      return activated
     })
+    if (!updated) return res.status(409).json({ message: 'Your auction membership is already active.' })
     res.status(201).json({ message: 'Demo activation completed. No payment was processed.', ...membershipPayload(updated) })
   } catch (err) {
     handleControllerError(res, err, 'Could not complete demo membership activation')

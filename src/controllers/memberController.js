@@ -6,6 +6,7 @@ const Product = require('../models/Product')
 const { handleControllerError } = require('../utils/http')
 const { validateProfileInput } = require('../utils/inputValidation')
 const { toInspectionSafeObject } = require('../utils/inspectionReport')
+const { getMemberAuctionState, wonAuctionFilter } = require('../utils/auctionOutcome')
 
 const toSavedProductObject = product => toInspectionSafeObject(product, { reportPath: `/documents/products/${product._id}/report` })
 const toWonAuctionObject = car => toInspectionSafeObject(car, { reportPath: `/documents/auctions/${car._id}/report` })
@@ -92,11 +93,16 @@ const getMyBids = async (req, res) => {
     const bids = await Bid.find({ bidderId: req.user._id })
       .populate({
         path: 'carId',
-        select: 'make model year images currentBid status auctionEnd highestBidder bidCount',
+        select: 'make model year images currentBid reservePrice status auctionStart auctionEnd highestBidder bidCount',
         populate: { path: 'highestBidder', select: 'name' },
       })
       .sort({ createdAt: -1 })
-    res.json(bids)
+      .lean()
+    const now = Date.now()
+    res.json(bids.map(bid => ({
+      ...bid,
+      auctionState: getMemberAuctionState(bid.carId, req.user._id, now),
+    })))
   } catch (err) {
     handleControllerError(res, err, 'Could not load bids')
   }
@@ -104,15 +110,7 @@ const getMyBids = async (req, res) => {
 
 const getWonCars = async (req, res) => {
   try {
-    const wonCars = await Car.find({
-      highestBidder: req.user._id,
-      status: 'ended',
-      $or: [
-        { reservePrice: { $exists: false } },
-        { reservePrice: null },
-        { $expr: { $gte: ['$currentBid', '$reservePrice'] } },
-      ],
-    })
+    const wonCars = await Car.find(wonAuctionFilter(req.user._id))
     res.json(wonCars.map(toWonAuctionObject))
   } catch (err) {
     handleControllerError(res, err, 'Could not load won cars')
@@ -123,15 +121,7 @@ const getStats = async (req, res) => {
   try {
     const [totalBids, wonCars, activeCarIds] = await Promise.all([
       Bid.countDocuments({ bidderId: req.user._id }),
-      Car.countDocuments({
-        highestBidder: req.user._id,
-        status: 'ended',
-        $or: [
-          { reservePrice: { $exists: false } },
-          { reservePrice: null },
-          { $expr: { $gte: ['$currentBid', '$reservePrice'] } },
-        ],
-      }),
+      Car.countDocuments(wonAuctionFilter(req.user._id)),
       Car.distinct('_id', { status: 'active', auctionStart: { $lte: new Date() }, auctionEnd: { $gt: new Date() } }),
     ])
     const activeBids = await Bid.countDocuments({ bidderId: req.user._id, carId: { $in: activeCarIds } })

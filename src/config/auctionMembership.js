@@ -7,9 +7,20 @@ const AUCTION_MEMBERSHIP_PRICE = positiveInteger(process.env.AUCTION_MEMBERSHIP_
 const AUCTION_MEMBERSHIP_CURRENCY = 'PKR'
 const AUCTION_MEMBERSHIP_PLAN = 'annual_auction_membership'
 const AUCTION_MEMBERSHIP_DURATION_YEARS = 1
-const { isDemoMode } = require('./runtime')
+const { appMode, isDemoMode } = require('./runtime')
 
-const demoPaymentsEnabled = () => isDemoMode() && (process.env.PAYMENT_MODE || 'demo') === 'demo'
+const demoPaymentsEnabled = (env = process.env) =>
+  (isDemoMode(env) && (env.PAYMENT_MODE || 'demo') === 'demo') ||
+  (env.NODE_ENV === 'production' && appMode(env) === 'production' &&
+    env.PAYMENT_MODE === 'disabled' && env.ENABLE_HOSTED_DEMO_MEMBERSHIP === 'true')
+
+const membershipCapabilities = () => ({
+  activationMode: demoPaymentsEnabled() ? 'demo' : 'unavailable',
+  amount: AUCTION_MEMBERSHIP_PRICE,
+  currency: AUCTION_MEMBERSHIP_CURRENCY,
+  plan: AUCTION_MEMBERSHIP_PLAN,
+  durationYears: AUCTION_MEMBERSHIP_DURATION_YEARS,
+})
 
 module.exports = {
   AUCTION_MEMBERSHIP_PRICE,
@@ -17,4 +28,5 @@ module.exports = {
   AUCTION_MEMBERSHIP_PLAN,
   AUCTION_MEMBERSHIP_DURATION_YEARS,
   demoPaymentsEnabled,
+  membershipCapabilities,
 }
