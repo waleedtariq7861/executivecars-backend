@@ -6,6 +6,10 @@ process.env.EMAIL_DELIVERY_MODE = 'development'
 process.env.ENABLE_DEMO_SEED = 'true'
 process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = 'true'
 process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
+const { DEFAULT_TEST_URI, validateTestUri, connectTestDatabase, dropTestDatabase, resetTestDatabase } = require('./helpers/localDatabase')
+process.env.MONGO_URI = validateTestUri(process.env.TEST_MONGO_URI || DEFAULT_TEST_URI)
+// dotenv loaded by development seed helpers must not enable real integrations.
+for (const key of ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'GROQ_API_KEY', 'ML_SERVICE_KEY', 'RESEND_API_KEY']) process.env[key] = ''
 
 const { before, after, beforeEach, test } = require('node:test')
 const assert = require('node:assert/strict')
@@ -14,7 +18,6 @@ const crypto = require('crypto')
 const fs = require('fs/promises')
 const path = require('path')
 const request = require('supertest')
-const { MongoMemoryReplSet } = require('mongodb-memory-server')
 const { createApp } = require('../server/app')
 const Product = require('../src/models/Product')
 const Car = require('../src/models/Car')
@@ -27,22 +30,21 @@ const { DEMO_OTP, seedDemo } = require('../scripts/seedDemo')
 const { privateUploadDir } = require('../src/config/cloudinary')
 const { validateRuntimeConfig } = require('../src/config/runtime')
 
-let database
 let app
 
 before(async () => {
-  database = await MongoMemoryReplSet.create({ replSet: { count: 1, storageEngine: 'wiredTiger' } })
-  await mongoose.connect(database.getUri())
+  await connectTestDatabase()
   app = createApp()
 })
 
 after(async () => {
-  if (mongoose.connection.readyState) await mongoose.disconnect()
-  if (database) await database.stop()
+  if (mongoose.connection.readyState === 1) {
+    try { await dropTestDatabase() } finally { await mongoose.disconnect() }
+  }
 })
 
 beforeEach(async () => {
-  await mongoose.connection.db.dropDatabase()
+  await resetTestDatabase()
 })
 
 async function customerToken() {
