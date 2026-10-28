@@ -1,5 +1,4 @@
 const mongoose = require('mongoose')
-const Admin   = require('../models/Admin')
 const Member  = require('../models/Member')
 const Booking = require('../models/Booking')
 const Car     = require('../models/Car')
