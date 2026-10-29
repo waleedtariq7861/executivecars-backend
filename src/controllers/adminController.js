@@ -1,5 +1,4 @@
 const mongoose = require('mongoose')
-const Admin   = require('../models/Admin')
 const Member  = require('../models/Member')
 const Booking = require('../models/Booking')
 const Car     = require('../models/Car')
@@ -319,8 +318,14 @@ const closeAuction = async (req, res) => {
       { _id: req.params.id, status: 'active' },
       { $set: { status: 'ended' } },
       { new: true, runValidators: true },
-    ).populate('highestBidder', 'name email')
+    ).populate('highestBidder', 'name email').populate('ownerId', 'name email sellerApproved')
     if (!auction) return res.status(409).json({ message: 'Auction is already closed or does not exist' })
+    // Closing a running auction early ends its window now, so no screen keeps showing a future end date.
+    const closedAt = new Date()
+    if (auction.auctionStart <= closedAt && auction.auctionEnd > closedAt) {
+      await Car.updateOne({ _id: auction._id }, { $set: { auctionEnd: closedAt } })
+      auction.auctionEnd = closedAt
+    }
     const reserveMet = hasMetReserve(auction)
     const io = req.app.get('io')
     io?.to(auction._id.toString()).emit('auction-ended', {

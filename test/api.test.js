@@ -139,6 +139,24 @@ test('browser sessions use HttpOnly cookies, restore safely, enforce CSRF, and l
   }
 })
 
+test('changing password with a wrong current password is a 400 that keeps the session valid', async () => {
+  const token = await customerToken()
+  const auth = { Authorization: `Bearer ${token}` }
+
+  const wrong = await request(app).post('/api/auth/change-password').set(auth).send({ current: 'not-the-password', newPassword: 'another-pass-456' })
+  assert.equal(wrong.status, 400)
+  assert.equal(wrong.body.message, 'Current password is incorrect')
+  assert.equal((await request(app).get('/api/auth/session').set(auth)).status, 200)
+
+  const unauthenticated = await request(app).post('/api/auth/change-password').send({ current: 'test-pass-123', newPassword: 'another-pass-456' })
+  assert.equal(unauthenticated.status, 401)
+
+  const changed = await request(app).post('/api/auth/change-password').set(auth).send({ current: 'test-pass-123', newPassword: 'another-pass-456' })
+  assert.equal(changed.status, 200)
+  const relogin = await request(app).post('/api/auth/login').send({ email: 'customer@example.com', password: 'another-pass-456' })
+  assert.equal(relogin.status, 200)
+})
+
 test('registration and profile APIs reject invalid identity fields', async () => {
   const invalidName = await request(app).post('/api/auth/register').send({
     name: 'User 123',
@@ -740,6 +758,9 @@ test('only administrators can view bid history and close an auction', async () =
   assert.equal(close.status, 200)
   assert.equal(close.body.auction.status, 'ended')
   assert.equal(close.body.reserveMet, true)
+  // An early close ends the window now instead of leaving a future end date behind.
+  assert.ok(new Date(close.body.auction.auctionEnd).getTime() <= Date.now())
+  assert.ok((await Car.findById(auction._id)).auctionEnd.getTime() <= Date.now())
 
   const secondClose = await request(app)
     .post(`/api/admin/cars/${auction._id}/close`)
@@ -748,7 +769,7 @@ test('only administrators can view bid history and close an auction', async () =
 
   const reserveAuction = await Car.create({
     make: 'Honda', model: 'City', year: 2021, km: 30000, engine: '1500', basePrice: 3200000,
-    reservePrice: 4000000, currentBid: 3600000, highestBidder: member._id, bidCount: 1,
+    reservePrice: 4000000, currentBid: 3600000, highestBidder: member._id, bidCount: 1, ownerId: member._id,
     auctionStart: new Date(Date.now() - 60000), auctionEnd: new Date(Date.now() + 3600000),
   })
   await Bid.create({ carId: reserveAuction._id, bidderId: member._id, amount: 3600000 })
@@ -757,6 +778,8 @@ test('only administrators can view bid history and close an auction', async () =
     .set('Authorization', `Bearer ${adminLogin.body.token}`)
   assert.equal(reserveClose.status, 200)
   assert.equal(reserveClose.body.reserveMet, false)
+  // The close response carries the populated owner, matching the list endpoint.
+  assert.equal(reserveClose.body.auction.ownerId.email, 'customer@example.com')
 
   const reserveResult = await request(app)
     .get(`/api/admin/cars/${reserveAuction._id}/results`)
