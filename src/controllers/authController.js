@@ -168,7 +168,9 @@ const changePassword = async (req, res) => {
 
     const Model = req.accountRole === 'admin' ? Admin : req.accountModel === 'seller' ? Seller : Member
     const fresh = await Model.findById(req.user._id)
-    if (!fresh || !(await fresh.matchPassword(current))) return res.status(401).json({ message: 'Current password is incorrect' })
+    if (!fresh) return res.status(401).json({ message: 'Account not found' })
+    // 400, not 401: the session is valid and clients treat 401 as "signed out".
+    if (!(await fresh.matchPassword(current))) return res.status(400).json({ message: 'Current password is incorrect' })
 
     fresh.password = newPassword
     await fresh.save()

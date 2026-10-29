@@ -139,6 +139,24 @@ test('browser sessions use HttpOnly cookies, restore safely, enforce CSRF, and l
   }
 })
 
+test('changing password with a wrong current password is a 400 that keeps the session valid', async () => {
+  const token = await customerToken()
+  const auth = { Authorization: `Bearer ${token}` }
+
+  const wrong = await request(app).post('/api/auth/change-password').set(auth).send({ current: 'not-the-password', newPassword: 'another-pass-456' })
+  assert.equal(wrong.status, 400)
+  assert.equal(wrong.body.message, 'Current password is incorrect')
+  assert.equal((await request(app).get('/api/auth/session').set(auth)).status, 200)
+
+  const unauthenticated = await request(app).post('/api/auth/change-password').send({ current: 'test-pass-123', newPassword: 'another-pass-456' })
+  assert.equal(unauthenticated.status, 401)
+
+  const changed = await request(app).post('/api/auth/change-password').set(auth).send({ current: 'test-pass-123', newPassword: 'another-pass-456' })
+  assert.equal(changed.status, 200)
+  const relogin = await request(app).post('/api/auth/login').send({ email: 'customer@example.com', password: 'another-pass-456' })
+  assert.equal(relogin.status, 200)
+})
+
 test('registration and profile APIs reject invalid identity fields', async () => {
   const invalidName = await request(app).post('/api/auth/register').send({
     name: 'User 123',
