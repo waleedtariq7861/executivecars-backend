@@ -38,11 +38,7 @@ const syncAccount = async (Model, account) => {
   const existing = await Model.findOne({ email: account.email })
   // Migrate only the narrowly identifiable local admin created by server/index.js
   // before this full demo seed existed. Every other untagged account is protected.
-  const isLegacyLocalAdmin = Model === Admin
-    && account.email === 'admin@executivecars.pk'
-    && existing?.name === 'Local Admin'
-    && existing?.role === 'admin'
-  if (existing && !String(existing.demoKey || '').startsWith(DEMO_PREFIX) && !isLegacyLocalAdmin) {
+  if (existing && !String(existing.demoKey || '').startsWith(DEMO_PREFIX)) {
     throw new Error(`Refusing to overwrite an existing non-demo account: ${account.email}`)
   }
   const record = existing || new Model()

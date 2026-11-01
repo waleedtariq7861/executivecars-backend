@@ -3,7 +3,6 @@ const http = require('http')
 const mongoose = require('mongoose')
 const { Server } = require('socket.io')
 const connectDB = require('../src/config/db')
-const Admin = require('../src/models/Admin')
 const initSocket = require('../src/socket/bidSocket')
 const { startAuctionScheduler } = require('../src/utils/auctionScheduler')
 const { createApp, allowedOrigins } = require('./app')
@@ -25,31 +24,11 @@ const port = Number(process.env.PORT) || 5000
 let schedulerTimer
 let started = false
 
-const ensureDevelopmentAdmin = async () => {
-  if (!isDemoMode()) return
-  const email = String(process.env.DEV_ADMIN_EMAIL || '').trim().toLowerCase()
-  const password = String(process.env.DEV_ADMIN_PASSWORD || '')
-  if (!email || !password) {
-    console.warn('Development admin seed skipped: set DEV_ADMIN_EMAIL and DEV_ADMIN_PASSWORD to enable it.')
-    return
-  }
-  const existing = await Admin.findOne({ email })
-  if (!existing) {
-    await Admin.create({ name: 'Local Admin', email, password, role: 'admin' })
-    return
-  }
-  if (!(await existing.matchPassword(password))) {
-    existing.password = password
-    await existing.save()
-  }
-}
-
 const start = async () => {
   if (started) return server
   validateRuntimeConfig()
   if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required')
   await connectDB()
-  await ensureDevelopmentAdmin()
   schedulerTimer = startAuctionScheduler(io)
   await new Promise((resolve, reject) => {
     server.once('error', reject)

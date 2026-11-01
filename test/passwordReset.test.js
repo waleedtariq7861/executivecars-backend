@@ -4,7 +4,6 @@ process.env.CLIENT_URL = 'http://127.0.0.1:5173'
 process.env.ML_API_URL = ''
 process.env.EMAIL_DELIVERY_MODE = 'development'
 process.env.ENABLE_DEMO_SEED = 'true'
-process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = 'true'
 process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
 const { DEFAULT_TEST_URI, validateTestUri, connectTestDatabase, dropTestDatabase, resetTestDatabase } = require('./helpers/localDatabase')
 process.env.MONGO_URI = validateTestUri(process.env.TEST_MONGO_URI || DEFAULT_TEST_URI)
@@ -15,11 +14,12 @@ const assert = require('node:assert/strict')
 const crypto = require('node:crypto')
 const axios = require('axios')
 const mongoose = require('mongoose')
+require('./helpers/noRateLimits')
 const request = require('supertest')
+require('./helpers/cookieAuth')
 const { createApp } = require('../server/app')
 const Admin = require('../src/models/Admin')
 const Member = require('../src/models/Member')
-const Seller = require('../src/models/Seller')
 const Session = require('../src/models/Session')
 const PasswordResetToken = require('../src/models/PasswordResetToken')
 const email = require('../src/utils/email')
@@ -83,14 +83,11 @@ describe('requesting a reset', () => {
     assert.equal(resetMails[0].to, customer.email)
   })
 
-  test('works for administrators and legacy sellers, not only customers', async () => {
+  test('works for administrators, not only customers', async () => {
     const admin = await makeAdmin()
-    const seller = await Seller.create({ name: 'Old Seller', email: 'old-seller@example.com', password: 'seller-pass-123' })
     await forgot(admin.email)
-    await forgot(seller.email)
-    const records = await PasswordResetToken.find().lean()
-    assert.deepEqual(records.map(record => record.accountModel).sort(), ['admin', 'seller'])
-    assert.deepEqual(resetMails.map(mail => mail.to).sort(), [admin.email, seller.email].sort())
+    assert.equal((await PasswordResetToken.findOne()).accountModel, 'admin')
+    assert.deepEqual(resetMails.map(mail => mail.to), [admin.email])
   })
 
   test('a customer account wins when the same address also exists as an administrator', async () => {
@@ -185,15 +182,6 @@ describe('completing a reset', () => {
     assert.equal((await request(app).post('/api/auth/admin/login').send({ email: admin.email, password: 'harbour-violet-88' })).status, 200)
   })
 
-  test('a legacy seller resets and then signs in through the unified form', async () => {
-    const seller = await Seller.create({ name: 'Old Seller', email: 'old-seller@example.com', password: 'seller-pass-123' })
-    const token = await requestLink(seller.email)
-    assert.equal((await reset(token, 'meadow-amber-31')).status, 200)
-    const login = await request(app).post('/api/auth/login').send({ email: seller.email, password: 'meadow-amber-31' })
-    assert.equal(login.status, 200)
-    assert.equal(login.body.user.sellerApproved, true)
-  })
-
   test('the link works once, expires, and an unknown or malformed token is refused', async () => {
     await makeMember()
     const token = await requestLink(customer.email)
@@ -202,7 +190,7 @@ describe('completing a reset', () => {
 
     const expiredToken = crypto.randomBytes(32).toString('hex')
     await PasswordResetToken.create({
-      accountId: (await Member.findOne())._id, tokenHash: crypto.createHash('sha256').update(expiredToken).digest('hex'), expiresAt: new Date(Date.now() - 1000),
+      accountModel: 'member', accountId: (await Member.findOne())._id, tokenHash: crypto.createHash('sha256').update(expiredToken).digest('hex'), expiresAt: new Date(Date.now() - 1000),
     })
     assert.equal((await reset(expiredToken, 'another-pass-99')).status, 400)
     assert.equal((await reset(crypto.randomBytes(32).toString('hex'), 'another-pass-99')).status, 400)

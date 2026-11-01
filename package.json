@@ -6,7 +6,6 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",
-    "seed:test-users": "node scripts/seedDemo.js",
     "seed:demo": "node scripts/seedDemo.js",
     "seed:demo:reset": "node scripts/seedDemo.js --reset",
     "bootstrap:admin": "node scripts/bootstrapAdmin.js",
@@ -18,7 +17,6 @@
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",
     "axios": "^1.7.3",
-    "bcryptjs": "^2.4.3",
     "cloudinary": "^2.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

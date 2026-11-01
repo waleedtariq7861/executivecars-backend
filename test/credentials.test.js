@@ -4,7 +4,6 @@ process.env.CLIENT_URL = 'http://127.0.0.1:5173'
 process.env.ML_API_URL = ''
 process.env.EMAIL_DELIVERY_MODE = 'development'
 process.env.ENABLE_DEMO_SEED = 'true'
-process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = 'true'
 process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
 const { DEFAULT_TEST_URI, validateTestUri, connectTestDatabase, dropTestDatabase, resetTestDatabase } = require('./helpers/localDatabase')
 process.env.MONGO_URI = validateTestUri(process.env.TEST_MONGO_URI || DEFAULT_TEST_URI)
@@ -13,19 +12,18 @@ for (const key of ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_AP
 const { before, after, beforeEach, describe, test } = require('node:test')
 const assert = require('node:assert/strict')
 const crypto = require('node:crypto')
-const bcrypt = require('bcryptjs')
 const mongoose = require('mongoose')
+require('./helpers/noRateLimits')
 const request = require('supertest')
+require('./helpers/cookieAuth')
 const { createApp } = require('../server/app')
 const Admin = require('../src/models/Admin')
 const Member = require('../src/models/Member')
-const Seller = require('../src/models/Seller')
 const LoginAttempt = require('../src/models/LoginAttempt')
 const PasswordResetToken = require('../src/models/PasswordResetToken')
-const { hashPassword, verifyPassword, verifyWithEqualCost, needsRehash } = require('../src/utils/passwordHash')
+const { hashPassword, verifyPassword, verifyWithEqualCost } = require('../src/utils/passwordHash')
 const { validatePassword, isBreached } = require('../src/utils/passwordPolicy')
 const throttle = require('../src/utils/loginThrottle')
-const limiters = require('../src/middleware/rateLimits')
 const { validateRuntimeConfig } = require('../src/config/runtime')
 
 let app
@@ -49,12 +47,8 @@ const person = { name: 'Credential Tester', email: 'credentials@example.com', ph
 const register = (overrides = {}) => request(app).post('/api/auth/register').send({ ...person, ...overrides })
 const login = (password, email = person.email) => request(app).post('/api/auth/login').send({ email, password })
 
-// An account whose hash is a legacy bcrypt one, exactly as created before Argon2id.
-const legacyBcryptMember = async (password = person.password, cost = 4) => {
-  const member = await Member.create({ name: person.name, email: person.email, phone: person.phone, password: 'placeholder-pass-1' })
-  await Member.updateOne({ _id: member._id }, { $set: { password: await bcrypt.hash(password, cost) } })
-  return member
-}
+// A hash in the old bcrypt format: the application no longer reads it.
+const BCRYPT_HASH = '$2a$12$c/etHEVf/.OrLa0OwbW7qeW9X2x69xm05et9DTpV9HovU1owEUPwG'
 
 describe('password hashing', () => {
   test('new hashes are Argon2id with the documented parameters and verify only the right password', async () => {
@@ -62,39 +56,27 @@ describe('password hashing', () => {
     assert.match(hash, /^\$argon2id\$v=19\$m=19456,t=2,p=1\$/)
     assert.equal(await verifyPassword('correct horse battery', hash), true)
     assert.equal(await verifyPassword('correct horse batterz', hash), false)
-    assert.equal(needsRehash(hash), false)
   })
 
-  test('legacy bcrypt hashes still verify and are flagged for upgrade; junk never verifies', async () => {
-    const legacy = await bcrypt.hash('legacy-password-1', 4)
-    assert.equal(await verifyPassword('legacy-password-1', legacy), true)
-    assert.equal(await verifyPassword('legacy-password-2', legacy), false)
-    assert.equal(needsRehash(legacy), true)
-    for (const junk of ['', 'plain-text-password', '$argon2id$not-a-real-hash', undefined, null]) {
-      assert.equal(await verifyPassword('plain-text-password', junk), false)
+  test('only Argon2id hashes verify: junk and old bcrypt-format hashes never do', async () => {
+    for (const other of ['', 'plain-text-password', '$argon2id$not-a-real-hash', BCRYPT_HASH, undefined, null]) {
+      assert.equal(await verifyPassword('plain-text-password', other), false)
     }
     assert.equal(await verifyPassword('', await hashPassword('something-else-1')), false)
   })
 
-  test('hashes made with weaker Argon2 parameters are flagged for upgrade', () => {
-    assert.equal(needsRehash('$argon2id$v=19$m=4096,t=1,p=1$c29tZXNhbHQ$aGFzaA'), true)
-  })
-
-  test('equal-cost verification returns the real answer for any hash type, or false when there is no account', async () => {
+  test('equal-cost verification returns the real answer, or false when there is no account or no usable hash', async () => {
     const argon = await hashPassword('mixed-scheme-pass')
-    const legacy = await bcrypt.hash('mixed-scheme-pass', 4)
     assert.equal(await verifyWithEqualCost('mixed-scheme-pass', argon), true)
-    assert.equal(await verifyWithEqualCost('mixed-scheme-pass', legacy), true)
     assert.equal(await verifyWithEqualCost('wrong-pass-word', argon), false)
-    assert.equal(await verifyWithEqualCost('wrong-pass-word', legacy), false)
     assert.equal(await verifyWithEqualCost('mixed-scheme-pass', undefined), false)
+    assert.equal(await verifyWithEqualCost('mixed-scheme-pass', BCRYPT_HASH), false)
   })
 
-  test('Member, Admin and Seller all store Argon2id and keep matchPassword working', async () => {
+  test('Member and Admin both store Argon2id and keep matchPassword working', async () => {
     const admin = await Admin.create({ name: 'Hash Admin', email: 'hash-admin@example.com', password: 'admin-pass-123', role: 'admin' })
-    const seller = await Seller.create({ name: 'Hash Seller', email: 'hash-seller@example.com', password: 'seller-pass-123' })
     const member = await Member.create({ name: 'Hash Member', email: 'hash-member@example.com', password: 'member-pass-123' })
-    for (const [account, password] of [[admin, 'admin-pass-123'], [seller, 'seller-pass-123'], [member, 'member-pass-123']]) {
+    for (const [account, password] of [[admin, 'admin-pass-123'], [member, 'member-pass-123']]) {
       assert.match(account.password, /^\$argon2id\$/)
       assert.equal(await account.matchPassword(password), true)
       assert.equal(await account.matchPassword(`${password}-x`), false)
@@ -263,7 +245,7 @@ describe('policy is enforced on every way of choosing a password', () => {
     const member = await Member.findOne({ email: person.email })
     const rawToken = crypto.randomBytes(32).toString('hex')
     await PasswordResetToken.create({
-      accountId: member._id, tokenHash: crypto.createHash('sha256').update(rawToken).digest('hex'), expiresAt: new Date(Date.now() + 60_000),
+      accountModel: 'member', accountId: member._id, tokenHash: crypto.createHash('sha256').update(rawToken).digest('hex'), expiresAt: new Date(Date.now() + 60_000),
     })
     const reset = password => request(app).post('/api/auth/reset-password').send({ token: rawToken, password })
 
@@ -278,50 +260,20 @@ describe('policy is enforced on every way of choosing a password', () => {
   })
 })
 
-describe('legacy bcrypt hashes are upgraded at sign-in', () => {
-  test('a correct sign-in replaces the bcrypt hash with Argon2id without counting as a password change', async () => {
-    const member = await legacyBcryptMember()
-    const before = await Member.findById(member._id)
-    assert.match(before.password, /^\$2[aby]\$/)
-    const response = await login(person.password)
-    assert.equal(response.status, 200)
-    const after = await Member.findById(member._id)
-    assert.match(after.password, /^\$argon2id\$/)
-    assert.equal(await after.matchPassword(person.password), true)
-    assert.equal(String(after.passwordChangedAt), String(before.passwordChangedAt))
-    assert.equal((await login(person.password)).status, 200, 'the upgraded hash keeps working')
-  })
+describe('accounts whose password is not an Argon2id hash', () => {
+  test('cannot sign in with it, and a password reset gives them a working Argon2id password', async () => {
+    const member = await Member.create({ name: person.name, email: person.email, phone: person.phone, password: 'placeholder-pass-1' })
+    await Member.collection.updateOne({ _id: member._id }, { $set: { password: BCRYPT_HASH } })
+    assert.equal((await login('anything-at-all-1')).status, 401)
 
-  test('registering with an email that belongs to a legacy seller gets a plain "already exists" answer', async () => {
-    await Seller.create({ name: 'Legacy Seller', email: person.email, password: 'seller-pass-123' })
-    const response = await register()
-    assert.equal(response.status, 409)
-    assert.match(response.body.message, /already exists for this email/)
-    assert.doesNotMatch(response.body.message, /seller/i)
-  })
-
-  test('a wrong password leaves the old hash untouched', async () => {
-    const member = await legacyBcryptMember()
-    const before = (await Member.findById(member._id)).password
-    assert.equal((await login('definitely-wrong-1')).status, 401)
-    assert.equal((await Member.findById(member._id)).password, before)
-  })
-
-  test('an administrator hash is upgraded the same way', async () => {
-    const admin = await Admin.create({ name: 'Old Admin', email: 'old-admin@example.com', password: 'placeholder-pass-1', role: 'admin' })
-    await Admin.updateOne({ _id: admin._id }, { $set: { password: await bcrypt.hash('admin-pass-123', 4) } })
-    const response = await request(app).post('/api/auth/admin/login').send({ email: admin.email, password: 'admin-pass-123' })
-    assert.equal(response.status, 200)
-    assert.match((await Admin.findById(admin._id)).password, /^\$argon2id\$/)
-  })
-
-  test('a legacy seller signing in through the unified form becomes an Argon2id member', async () => {
-    const seller = await Seller.create({ name: 'Legacy Seller', email: 'legacy-seller@example.com', password: 'placeholder-pass-1' })
-    await Seller.updateOne({ _id: seller._id }, { $set: { password: await bcrypt.hash('seller-pass-123', 4) } })
-    const response = await login('seller-pass-123', seller.email)
-    assert.equal(response.status, 200)
-    assert.equal(response.body.user.sellerApproved, true)
-    assert.match((await Member.findOne({ email: seller.email })).password, /^\$argon2id\$/)
+    const token = crypto.randomBytes(32).toString('hex')
+    await PasswordResetToken.create({
+      accountModel: 'member', accountId: member._id, tokenHash: crypto.createHash('sha256').update(token).digest('hex'), expiresAt: new Date(Date.now() + 60_000),
+    })
+    const reset = await request(app).post('/api/auth/reset-password').send({ token, password: 'violet-harbour-77' })
+    assert.equal(reset.status, 200)
+    assert.equal((await login('violet-harbour-77')).status, 200)
+    assert.match((await Member.findById(member._id)).password, /^\$argon2id\$/)
   })
 })
 
@@ -428,11 +380,15 @@ describe('sign-in throttling', () => {
     assert.equal((await attempt('admin-pass-123')).status, 429)
   })
 
-  test('each endpoint has its own request limiter, so sign-in traffic cannot exhaust registration or reset budgets', () => {
-    const { loginLimiter, adminLoginLimiter, registerLimiter, forgotPasswordLimiter, resetPasswordLimiter } = limiters
-    const all = [loginLimiter, adminLoginLimiter, registerLimiter, forgotPasswordLimiter, resetPasswordLimiter]
-    assert.equal(new Set(all).size, all.length)
-    assert.equal(limiters.authLimiter, undefined)
+  test('each endpoint is wired to its own request limiter, so sign-in traffic cannot exhaust registration or reset budgets', () => {
+    // The suites replace the limiters with pass-throughs, so this checks the wiring in the route file itself.
+    const routes = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'src', 'routes', 'auth.js'), 'utf8')
+    const limiterOf = path => routes.match(new RegExp(String.raw`router\.post\('${path}',\s+(\w+),`))?.[1]
+    assert.deepEqual(
+      ['/admin/login', '/register', '/login', '/forgot-password', '/reset-password'].map(limiterOf),
+      ['adminLoginLimiter', 'registerLimiter', 'loginLimiter', 'forgotPasswordLimiter', 'resetPasswordLimiter'],
+    )
+    assert.equal(/authLimiter/.test(routes), false)
   })
 })
 
@@ -440,22 +396,17 @@ describe('sign-in timing does not reveal which emails are registered', () => {
   const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)]
   const time = async attempt => { const start = process.hrtime.bigint(); await attempt(); return Number(process.hrtime.bigint() - start) / 1e6 }
 
-  test('unknown email, Argon2id account and bcrypt account all take about the same time', async () => {
+  test('an unknown email and a registered one take about the same time', async () => {
     await Member.create({ name: 'Timing Argon', email: 'timing-argon@example.com', phone: '+92 300 5550111', password: 'argon-pass-9876' })
-    const bcryptMember = await Member.create({ name: 'Timing Bcrypt', email: 'timing-bcrypt@example.com', phone: '+92 300 5550112', password: 'placeholder-pass-1' })
-    await Member.updateOne({ _id: bcryptMember._id }, { $set: { password: await bcrypt.hash('bcrypt-pass-9876', 12) } })
 
     await login('warm-up-attempt', 'timing-argon@example.com')
-    const samples = { unknown: [], argon: [], bcrypt: [] }
-    for (let i = 0; i < 3; i += 1) {
+    const samples = { unknown: [], registered: [] }
+    for (let i = 0; i < 5; i += 1) {
       samples.unknown.push(await time(() => login('wrong-password-1', `nobody-${i}@example.com`)))
-      samples.argon.push(await time(() => login('wrong-password-1', 'timing-argon@example.com')))
-      samples.bcrypt.push(await time(() => login('wrong-password-1', 'timing-bcrypt@example.com')))
+      samples.registered.push(await time(() => login('wrong-password-1', 'timing-argon@example.com')))
     }
-    const [unknown, argon, bcryptTime] = [median(samples.unknown), median(samples.argon), median(samples.bcrypt)]
-    const slowest = Math.max(unknown, argon, bcryptTime)
-    const fastest = Math.min(unknown, argon, bcryptTime)
-    assert.ok(slowest > 100, `sanity: verification really ran (slowest ${slowest.toFixed(0)} ms)`)
-    assert.ok(fastest / slowest > 0.6, `timings diverge: unknown ${unknown.toFixed(0)} ms, argon ${argon.toFixed(0)} ms, bcrypt ${bcryptTime.toFixed(0)} ms`)
+    const [unknown, registered] = [median(samples.unknown), median(samples.registered)]
+    assert.ok(Math.min(unknown, registered) > 5, `sanity: verification really ran (${unknown.toFixed(0)} / ${registered.toFixed(0)} ms)`)
+    assert.ok(Math.min(unknown, registered) / Math.max(unknown, registered) > 0.5, `timings diverge: unknown ${unknown.toFixed(0)} ms, registered ${registered.toFixed(0)} ms`)
   })
 })

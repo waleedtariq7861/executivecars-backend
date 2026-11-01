@@ -1,6 +1,6 @@
-const { hashPassword, verifyPassword, needsRehash } = require('../utils/passwordHash')
+const { hashPassword, verifyPassword } = require('../utils/passwordHash')
 
-// One place for credential storage so Member, Admin and Seller cannot drift apart.
+// One place for credential storage so Member and Admin cannot drift apart.
 module.exports = function passwordPlugin(schema) {
   schema.pre('save', async function hashChangedPassword() {
     if (!this.isModified('password')) return
@@ -12,10 +12,5 @@ module.exports = function passwordPlugin(schema) {
 
   schema.methods.matchPassword = function matchPassword(plain) {
     return verifyPassword(plain, this.password)
-  }
-
-  // True when the stored hash is a legacy bcrypt hash or uses weaker Argon2 parameters.
-  schema.methods.passwordNeedsRehash = function passwordNeedsRehash() {
-    return needsRehash(this.password)
   }
 }

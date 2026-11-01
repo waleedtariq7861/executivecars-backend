@@ -63,17 +63,10 @@ const sendOTP = async (req, res) => {
       await sendOTPEmail(email, otp)
       return res.json({ message: 'OTP sent to your email', delivery: 'email' })
     } catch (emailError) {
-      if (!isDemoMode()) {
-        await OtpChallenge.deleteOne({ email })
-        return res.status(502).json({ message: 'Verification email could not be sent. Please try again later.' })
-      }
-
-      console.warn(`OTP email unavailable for ${email}: ${emailError.message}`)
-      return res.json({
-        message: 'Email delivery is unavailable locally. Use the development OTP shown on screen.',
-        delivery: 'development',
-        devOtp: otp,
-      })
+      // The code never left, so it must not stay valid or count against the one-minute wait.
+      await OtpChallenge.deleteOne({ email })
+      console.error(`Booking code email delivery failed for ${email}: ${emailError.message}`)
+      return res.status(502).json({ message: 'Verification email could not be sent. Please try again later.' })
     }
   } catch (err) {
     handleControllerError(res, err, 'Could not send verification code')

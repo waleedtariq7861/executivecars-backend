@@ -4,7 +4,6 @@ process.env.CLIENT_URL = 'http://127.0.0.1:5173'
 process.env.ML_API_URL = ''
 process.env.EMAIL_DELIVERY_MODE = 'development'
 process.env.ENABLE_DEMO_SEED = 'true'
-process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = 'true'
 process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
 const { DEFAULT_TEST_URI, validateTestUri, connectTestDatabase, dropTestDatabase, resetTestDatabase } = require('./helpers/localDatabase')
 process.env.MONGO_URI = validateTestUri(process.env.TEST_MONGO_URI || DEFAULT_TEST_URI)
@@ -12,14 +11,14 @@ for (const key of ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_AP
 
 const { before, after, beforeEach, afterEach, describe, test } = require('node:test')
 const assert = require('node:assert/strict')
-const bcrypt = require('bcryptjs')
 const axios = require('axios')
 const mongoose = require('mongoose')
+require('./helpers/noRateLimits')
 const request = require('supertest')
+require('./helpers/cookieAuth')
 const { createApp } = require('../server/app')
 const Admin = require('../src/models/Admin')
 const Member = require('../src/models/Member')
-const Seller = require('../src/models/Seller')
 const EmailVerificationCode = require('../src/models/EmailVerificationCode')
 const email = require('../src/utils/email')
 const { DAILY_LIMIT, MAX_ATTEMPTS, RESEND_INTERVAL_MS, DAY_MS, issueCode, isEmailVerified } = require('../src/utils/emailVerification')
@@ -114,20 +113,12 @@ describe('sign-up', () => {
     assert.equal(mails.length, 1)
   })
 
-  test('in local demo mode a failing provider falls back to the on-screen code', async () => {
+  test('a failing provider is reported in local demo mode too, never papered over with an on-screen code', async () => {
     email.sendVerificationCodeEmail = async () => { throw new Error('no smtp here') }
     const response = await signUp()
     assert.equal(response.status, 201)
-    assert.equal(response.body.verification.delivery, 'development')
-    assert.match(response.body.verification.devCode, /^\d{6}$/)
-  })
-
-  test('a legacy seller who signs in through the unified form arrives already verified', async () => {
-    const seller = await Seller.create({ name: 'Old Seller', email: 'old-seller@example.com', password: 'placeholder-pass-1' })
-    await Seller.updateOne({ _id: seller._id }, { $set: { password: await bcrypt.hash('seller-pass-123', 4) } })
-    const login = await request(app).post('/api/auth/login').send({ email: seller.email, password: 'seller-pass-123' })
-    assert.equal(login.status, 200)
-    assert.equal(login.body.user.emailVerified, true)
+    assert.deepEqual(response.body.verification, { sent: false, failed: true })
+    assert.equal(await EmailVerificationCode.countDocuments(), 0)
   })
 })
 
@@ -338,6 +329,15 @@ describe('verifying by another route', () => {
     const done = await request(app).post('/api/bookings/verify-otp').set(auth).send({ otp: sent.body.devOtp })
     assert.equal(done.status, 200)
     assert.equal((await sessionUser(auth)).emailVerified, true)
+  })
+
+  test('a booking code that could not be mailed is reported, even in local demo mode, and leaves nothing behind', async () => {
+    const auth = bearer((await signUp()).body)
+    process.env.EMAIL_DELIVERY_MODE = 'resend' // no provider key configured, so delivery fails
+    const sent = await request(app).post('/api/bookings/send-otp').set(auth).send({})
+    assert.equal(sent.status, 502)
+    assert.equal(sent.body.devOtp, undefined)
+    assert.equal(await require('../src/models/OtpChallenge').countDocuments(), 0)
   })
 
   test('a wrong booking code verifies nothing', async () => {

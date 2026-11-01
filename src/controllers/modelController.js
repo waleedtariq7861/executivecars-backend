@@ -10,7 +10,7 @@ const predictionServiceHealth = async (req, res) => {
     const { data } = await axios.get(`${serviceBase()}/health`, serviceConfig(3000))
     res.json({ reachable: true, ...data })
   } catch (error) {
-    res.json({ reachable: false, status: 'unavailable', message: 'Prediction service is not reachable. Comparable-listing fallback remains available.' })
+    res.json({ reachable: false, status: 'unavailable', message: 'Prediction service is not reachable.' })
   }
 }
 

@@ -23,10 +23,6 @@ const sendVerificationCode = async (member) => {
     await email.sendVerificationCodeEmail(member.email, { name: member.name, code: issued.code })
     return { sent: true, delivery: 'email', expiresInSeconds }
   } catch (error) {
-    if (isDemoMode()) {
-      console.warn(`Verification email unavailable for ${member.email}: ${error.message}`)
-      return { sent: true, delivery: 'development', devCode: issued.code, expiresInSeconds }
-    }
     // The mail never left, so the attempt must not use up the person's allowance of new codes.
     await cancelCode(member)
     console.error('Verification email delivery failed:', error.message)

@@ -4,7 +4,6 @@ process.env.CLIENT_URL = 'http://127.0.0.1:5173'
 process.env.ML_API_URL = ''
 process.env.EMAIL_DELIVERY_MODE = 'development'
 process.env.ENABLE_DEMO_SEED = 'true'
-process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = 'true'
 process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
 const { DEFAULT_TEST_URI, validateTestUri, connectTestDatabase, dropTestDatabase, resetTestDatabase } = require('./helpers/localDatabase')
 process.env.MONGO_URI = validateTestUri(process.env.TEST_MONGO_URI || DEFAULT_TEST_URI)
@@ -17,7 +16,9 @@ const mongoose = require('mongoose')
 const crypto = require('crypto')
 const fs = require('fs/promises')
 const path = require('path')
+require('./helpers/noRateLimits')
 const request = require('supertest')
+require('./helpers/cookieAuth')
 const { createApp } = require('../server/app')
 const Product = require('../src/models/Product')
 const Car = require('../src/models/Car')
@@ -97,9 +98,7 @@ test('login and predictor reject invalid input', async () => {
 
 test('browser sessions use HttpOnly cookies, restore safely, enforce CSRF, and log out', async () => {
   const browser = request.agent(app)
-  const previousExposure = process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS
-  delete process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS
-  try {
+  {
     const registration = await browser.post('/api/auth/register').send({
       name: 'Cookie Session User', email: 'cookie-session@example.com', phone: '+92 300 7778899', password: 'test-pass-123',
     })
@@ -138,8 +137,6 @@ test('browser sessions use HttpOnly cookies, restore safely, enforce CSRF, and l
     assert.equal(logout.status, 200)
     assert.match(logout.headers['set-cookie'][0], /ec_session=;/)
     assert.equal((await browser.get('/api/auth/session')).status, 401)
-  } finally {
-    process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = previousExposure
   }
 })
 

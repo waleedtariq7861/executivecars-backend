@@ -1,12 +1,11 @@
 const Admin  = require('../models/Admin')
 const Member = require('../models/Member')
-const Seller = require('../models/Seller')
 const { handleControllerError } = require('../utils/http')
 const email = require('../utils/email')
 const { attachSession, clearSession, csrfTokenForSession, sessionTokenFromRequest } = require('../utils/session')
 const sessions = require('../utils/sessions')
 const loginThrottle = require('../utils/loginThrottle')
-const { hashPassword, verifyWithEqualCost } = require('../utils/passwordHash')
+const { verifyWithEqualCost } = require('../utils/passwordHash')
 const { validatePassword } = require('../utils/passwordPolicy')
 const { sendVerificationCode } = require('./emailVerificationController')
 const {
@@ -41,23 +40,10 @@ const passwordProblem = (res, result) => res.status(400).json({
   message: result.message, code: result.code, errors: { password: result.message },
 })
 
-// An older bcrypt hash is replaced by Argon2id the first time its owner signs in. Written directly (not
-// through save()) so validation of unrelated fields cannot block a sign-in, and it does not count as a
-// password change. A failure here must never fail the sign-in itself.
-const upgradeHashIfNeeded = async (Model, account, password) => {
-  if (!account.passwordNeedsRehash()) return
-  try {
-    await Model.updateOne({ _id: account._id }, { $set: { password: await hashPassword(password) } })
-  } catch (error) {
-    console.error('Password hash upgrade failed:', error.message)
-  }
-}
-
 // Every sign-in creates a fresh server-side session and hands the browser its opaque token.
 const startSession = async (req, res, { account, accountModel, role, user, status = 200, extra = {} }) => {
   const { token, session } = await sessions.createSession({ account, accountModel, role, req })
   const body = { ...extra, user, csrfToken: attachSession(res, token, session.absoluteExpiresAt.getTime() - Date.now()) }
-  if (process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS === 'true' && process.env.NODE_ENV === 'test') body.token = token
   return res.status(status).json(body)
 }
 
@@ -110,7 +96,6 @@ const adminLogin = async (req, res) => {
     }
 
     await loginThrottle.recordSuccess('admin', who)
-    await upgradeHashIfNeeded(Admin, admin, password)
     await startSession(req, res, {
       account: admin, accountModel: 'admin', role: 'admin',
       user: { id: admin._id, name: admin.name, email: admin.email, role: 'admin' },
@@ -140,11 +125,6 @@ const accountRegister = async (req, res) => {
     const exists = await Member.findOne({ email })
     if (exists) return res.status(409).json({ message: 'Email already registered' })
 
-    const legacySeller = await Seller.findOne({ email })
-    if (legacySeller) {
-      return res.status(409).json({ message: 'An account already exists for this email. Please sign in instead.' })
-    }
-
     const account = await Member.create({ name, email, phone, password, role: 'user' })
     // The sign-up response says whether the code went out, so the screen can offer a resend instead of failing silently.
     const verification = await sendVerificationCode(account)
@@ -165,51 +145,15 @@ const accountLogin = async (req, res) => {
     const who = { ip: req.ip, email }
     if (await rejectIfThrottled(res, 'member', who)) return
 
-    let account = await Member.findOne({ email })
-    const legacySeller = await Seller.findOne({ email })
+    const account = await Member.findOne({ email })
     // Every attempt does the same hashing work whether or not the account exists (see passwordHash.js).
-    let valid = await verifyWithEqualCost(password, account?.password)
-    let sellerValid = false
-    if (!valid) sellerValid = await verifyWithEqualCost(password, legacySeller?.password)
-
-    // Transparently migrate a legacy seller the first time they use unified sign-in.
-    if (!valid && legacySeller && sellerValid) {
-      if (!account) {
-        account = await Member.create({
-          name: legacySeller.name,
-          email: legacySeller.email,
-          phone: legacySeller.phone,
-          cnic: legacySeller.cnic,
-          address: legacySeller.address,
-          password,
-          role: 'user',
-          // A legacy seller's address was already proven by the booking code.
-          emailVerifiedAt: new Date(),
-          sellerApproved: true,
-          sellerBookingId: legacySeller.bookingId,
-        })
-      } else {
-        account.password = password
-        account.sellerApproved = true
-        account.sellerBookingId = account.sellerBookingId || legacySeller.bookingId
-        await account.save()
-      }
-      valid = true
-    }
-
+    const valid = await verifyWithEqualCost(password, account?.password)
     if (!account || !valid) {
       await loginThrottle.recordFailure('member', who)
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
     await loginThrottle.recordSuccess('member', who)
-    await upgradeHashIfNeeded(Member, account, password)
-
-    if (legacySeller && !account.sellerApproved) {
-      account.sellerApproved = true
-      account.sellerBookingId = account.sellerBookingId || legacySeller.bookingId
-      await account.save()
-    }
 
     await expireMembershipIfNeeded(account)
 
@@ -226,7 +170,7 @@ const changePassword = async (req, res) => {
       return res.status(400).json({ message: 'Both password fields are required' })
     }
 
-    const Model = req.accountRole === 'admin' ? Admin : req.accountModel === 'seller' ? Seller : Member
+    const Model = req.accountRole === 'admin' ? Admin : Member
     const fresh = await Model.findById(req.user._id)
     if (!fresh) return res.status(401).json({ message: 'Account not found' })
     // 400, not 401: the session is valid and clients treat 401 as "signed out".
@@ -261,14 +205,7 @@ const session = async (req, res) => {
   const token = sessionTokenFromRequest(req)
   const user = req.accountRole === 'admin'
     ? { id: req.user._id, name: req.user.name, email: req.user.email, role: 'admin' }
-    : req.accountModel === 'seller'
-      ? {
-          id: req.user._id, name: req.user.name, email: req.user.email, phone: req.user.phone,
-          role: 'user', sellerApproved: true,
-          subscriptionStatus: 'inactive', subscriptionExpiry: null,
-          capabilities: { buy: true, sell: true, auction: false },
-        }
-      : accountPayload(req.user)
+    : accountPayload(req.user)
   res.set('Cache-Control', 'no-store')
   res.json({ user, csrfToken: csrfTokenForSession(token) })
 }
@@ -294,9 +231,6 @@ module.exports = {
   adminLogin,
   accountRegister,
   accountLogin,
-  memberRegister: accountRegister,
-  memberLogin: accountLogin,
-  sellerLogin: accountLogin,
   changePassword,
   session,
   logout,

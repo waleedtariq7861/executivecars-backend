@@ -9,9 +9,6 @@ const UNAUTHENTICATED_AUTH_PATHS = new Set([
   '/api/auth/admin/login',
   '/api/auth/register',
   '/api/auth/login',
-  '/api/auth/member/register',
-  '/api/auth/member/login',
-  '/api/auth/seller/login',
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
 ])
