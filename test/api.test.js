@@ -873,7 +873,7 @@ test('development demo seed is idempotent and its accounts enforce real roles', 
   assert.equal(await Bid.countDocuments({ demoKey: { $regex: '^executive-cars-demo:' } }), 6)
   assert.equal(await Booking.countDocuments({ demoKey: { $regex: '^executive-cars-demo:' } }), 4)
   const seededPremium = await Member.findOne({ email: 'member@executivecars.pk' })
-  assert.match(seededPremium.password, /^\$2[aby]\$/)
+  assert.match(seededPremium.password, /^\$argon2id\$/)
   assert.notEqual(seededPremium.password, 'Member@12345')
   assert.equal(seededPremium.membershipSource, 'demo')
 
