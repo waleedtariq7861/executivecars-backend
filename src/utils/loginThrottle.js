@@ -39,8 +39,8 @@ const check = async (kind, who, now = Date.now()) => {
 }
 
 // Two simultaneous first failures can both try to insert the bucket; the loser just retries as an update.
-const increment = async (key, now) => {
-  const update = { $inc: { failures: 1 }, $setOnInsert: { windowStartedAt: new Date(now) }, $set: { expireAt: new Date(now + WINDOW_MS) } }
+const increment = async (key, now, windowMs = WINDOW_MS) => {
+  const update = { $inc: { failures: 1 }, $setOnInsert: { windowStartedAt: new Date(now) }, $set: { expireAt: new Date(now + windowMs) } }
   try {
     return await LoginAttempt.findOneAndUpdate({ key }, update, { upsert: true, new: true })
   } catch (error) {
@@ -68,4 +68,10 @@ const recordSuccess = async (kind, who) => {
   await LoginAttempt.deleteMany({ key: { $in: [pair.key, email.key] } })
 }
 
-module.exports = { check, recordFailure, recordSuccess, delayFor, WINDOW_MS, LIMITS }
+// After a password reset the person must not be stuck behind a delay earned by someone else's guesses.
+const clearEmail = async (kind, email) => {
+  const [, byEmail] = buckets(kind, { ip: '', email })
+  await LoginAttempt.deleteOne({ key: byEmail.key })
+}
+
+module.exports = { check, recordFailure, recordSuccess, clearEmail, increment, delayFor, WINDOW_MS, LIMITS }

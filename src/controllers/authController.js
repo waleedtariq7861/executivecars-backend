@@ -1,11 +1,8 @@
-const crypto = require('crypto')
 const Admin  = require('../models/Admin')
 const Member = require('../models/Member')
 const Seller = require('../models/Seller')
-const PasswordResetToken = require('../models/PasswordResetToken')
 const { handleControllerError } = require('../utils/http')
-const { isDemoMode } = require('../config/runtime')
-const { sendPasswordResetEmail } = require('../utils/email')
+const email = require('../utils/email')
 const { attachSession, clearSession, csrfTokenForSession, sessionTokenFromRequest } = require('../utils/session')
 const sessions = require('../utils/sessions')
 const loginThrottle = require('../utils/loginThrottle')
@@ -238,11 +235,16 @@ const changePassword = async (req, res) => {
     if (!policy.ok) return passwordProblem(res, policy)
 
     fresh.password = newPassword
-    await fresh.save()
+    await fresh.save({ validateModifiedOnly: true })
     // Anyone holding an older session (another device, a stolen cookie) is signed out; this one stays.
     await sessions.revokeAccountSessions({
       accountModel: req.accountModel, accountId: fresh._id, exceptId: req.session?._id, reason: 'password_changed', io: req.app.get('io'),
     })
+    try {
+      email.sendPasswordChangedEmail(fresh.email, { name: fresh.name, reason: 'change' })?.catch?.(error => console.error('Password changed email delivery failed:', error.message))
+    } catch (error) {
+      console.error('Password changed email delivery failed:', error.message)
+    }
     res.json({ message: 'Password updated successfully' })
   } catch (err) {
     handleControllerError(res, err, 'Password update failed')
@@ -282,64 +284,6 @@ const logout = async (req, res) => {
   }
 }
 
-const requestPasswordReset = async (req, res) => {
-  const genericResponse = { message: 'If that email belongs to an account, password reset instructions will be sent.' }
-  try {
-    const email = normalizeEmail(req.body.email)
-    if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ message: 'Enter a valid email address' })
-
-    const account = await Member.findOne({ email })
-    if (!account) return res.json(genericResponse)
-
-    await PasswordResetToken.deleteMany({ accountId: account._id })
-    const rawToken = crypto.randomBytes(32).toString('hex')
-    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex')
-    await PasswordResetToken.create({ accountId: account._id, tokenHash, expiresAt: new Date(Date.now() + 30 * 60 * 1000) })
-
-    const clientUrl = String(process.env.CLIENT_URL || 'http://127.0.0.1:5173').replace(/\/$/, '')
-    const resetUrl = `${clientUrl}/reset-password?token=${rawToken}`
-    let developmentResetUrl
-    try {
-      await sendPasswordResetEmail(account.email, resetUrl)
-      if (isDemoMode() && process.env.EMAIL_DELIVERY_MODE === 'development') developmentResetUrl = resetUrl
-    } catch (emailError) {
-      if (isDemoMode() && process.env.EMAIL_DELIVERY_MODE === 'development') developmentResetUrl = resetUrl
-      else console.error('Password reset email delivery failed:', emailError.message)
-    }
-
-    res.json({ ...genericResponse, ...(developmentResetUrl ? { developmentResetUrl } : {}) })
-  } catch (error) {
-    handleControllerError(res, error, 'Could not process password reset request')
-  }
-}
-
-const resetPassword = async (req, res) => {
-  try {
-    const token = String(req.body.token || '')
-    const password = req.body.password
-    if (!/^[a-f0-9]{64}$/i.test(token)) return res.status(400).json({ message: 'Invalid or expired reset link' })
-    if (typeof password !== 'string') return res.status(400).json({ message: 'Enter a new password', errors: { password: 'Enter a new password' } })
-
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
-    const resetRecord = await PasswordResetToken.findOne({ tokenHash, expiresAt: { $gt: new Date() } })
-    if (!resetRecord) return res.status(400).json({ message: 'Invalid or expired reset link' })
-
-    const account = await Member.findById(resetRecord.accountId)
-    if (!account) return res.status(400).json({ message: 'Invalid or expired reset link' })
-    // The link stays valid when the new password is rejected, so the person can simply try another one.
-    const policy = await validatePassword(password, { email: account.email, name: account.name })
-    if (!policy.ok) return passwordProblem(res, policy)
-    account.password = password
-    await account.save()
-    await PasswordResetToken.deleteMany({ accountId: account._id })
-    // Whoever had the old password may still hold a session: end them all after a reset.
-    await sessions.revokeAccountSessions({ accountModel: 'member', accountId: account._id, reason: 'password_reset', io: req.app.get('io') })
-    res.json({ message: 'Password reset successfully. You can now sign in.' })
-  } catch (error) {
-    handleControllerError(res, error, 'Could not reset password')
-  }
-}
-
 module.exports = {
   adminLogin,
   accountRegister,
@@ -348,8 +292,6 @@ module.exports = {
   memberLogin: accountLogin,
   sellerLogin: accountLogin,
   changePassword,
-  requestPasswordReset,
-  resetPassword,
   session,
   logout,
 }

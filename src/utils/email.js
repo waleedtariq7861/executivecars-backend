@@ -117,4 +117,30 @@ const sendPasswordResetEmail = async (to, resetUrl) => {
   })
 }
 
-module.exports = { sendOTPEmail, sendBookingConfirmationEmail, sendPasswordResetEmail }
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])
+
+// Sent after every password change so a change the owner did not make is noticed. It carries no link that
+// signs anyone in, only the way to start a reset.
+const sendPasswordChangedEmail = async (to, { name, reason = 'change', at = new Date() } = {}) => {
+  const clientUrl = String(process.env.CLIENT_URL || 'http://127.0.0.1:5173').replace(/\/$/, '')
+  const how = reason === 'reset' ? 'using a password reset link' : 'from your account settings'
+  const when = new Date(at).toUTCString()
+  await sendEmail({
+    to,
+    subject: 'Your Executive Cars password was changed',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #0f172a;">
+        <div style="background: #0f172a; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="color: #fff; margin: 0; font-size: 22px;">Executive <span style="color: #3b82f6;">Cars</span></h1>
+        </div>
+        <div style="background: #f8fafc; padding: 32px; border: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;">
+          <h2 style="margin-top: 0;">Your password was changed</h2>
+          <p style="color: #64748b; line-height: 1.6;">Hi ${escapeHtml(name || 'there')}, the password for your Executive Cars account was changed ${how} on ${escapeHtml(when)}. You were signed out of your other sessions.</p>
+          <p style="color: #64748b; line-height: 1.6;">If this was you, no action is needed. If it was not, <a href="${escapeHtml(clientUrl)}/forgot-password" style="color: #2563eb;">reset your password now</a> and contact us.</p>
+        </div>
+      </div>
+    `,
+  })
+}
+
+module.exports = { sendOTPEmail, sendBookingConfirmationEmail, sendPasswordResetEmail, sendPasswordChangedEmail }
