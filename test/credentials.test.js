@@ -292,6 +292,14 @@ describe('legacy bcrypt hashes are upgraded at sign-in', () => {
     assert.equal((await login(person.password)).status, 200, 'the upgraded hash keeps working')
   })
 
+  test('registering with an email that belongs to a legacy seller gets a plain "already exists" answer', async () => {
+    await Seller.create({ name: 'Legacy Seller', email: person.email, password: 'seller-pass-123' })
+    const response = await register()
+    assert.equal(response.status, 409)
+    assert.match(response.body.message, /already exists for this email/)
+    assert.doesNotMatch(response.body.message, /seller/i)
+  })
+
   test('a wrong password leaves the old hash untouched', async () => {
     const member = await legacyBcryptMember()
     const before = (await Member.findById(member._id)).password

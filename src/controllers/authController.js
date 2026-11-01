@@ -143,7 +143,7 @@ const accountRegister = async (req, res) => {
 
     const legacySeller = await Seller.findOne({ email })
     if (legacySeller) {
-      return res.status(409).json({ message: 'An account already exists for this email. Sign in with your seller credentials.' })
+      return res.status(409).json({ message: 'An account already exists for this email. Please sign in instead.' })
     }
 
     const account = await Member.create({ name, email, phone, password, role: 'user' })
