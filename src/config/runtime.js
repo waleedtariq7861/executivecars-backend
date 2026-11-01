@@ -15,9 +15,6 @@ const validateRuntimeConfig = (env = process.env) => {
   if (env.SESSION_COOKIE_SAMESITE && !['strict', 'lax'].includes(String(env.SESSION_COOKIE_SAMESITE).toLowerCase())) {
     throw new Error('SESSION_COOKIE_SAMESITE must be strict or lax')
   }
-  if (env.AUTH_VERIFICATION_CUTOFF && Number.isNaN(new Date(env.AUTH_VERIFICATION_CUTOFF).getTime())) {
-    throw new Error('AUTH_VERIFICATION_CUTOFF must be a valid date, for example 2026-11-02T00:00:00Z')
-  }
   if (env.HIBP_ENABLED && !['true', 'false'].includes(String(env.HIBP_ENABLED).toLowerCase())) {
     throw new Error('HIBP_ENABLED must be true or false')
   }

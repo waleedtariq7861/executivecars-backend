@@ -9,21 +9,8 @@ const RESEND_INTERVAL_MS = 60 * 1000
 const DAILY_LIMIT = 5
 const DAY_MS = 24 * 60 * 60 * 1000
 
-// Customers created before AUTH_VERIFICATION_CUTOFF count as verified without any database change, so turning
-// the feature on does not lock existing members out of bidding. Set it to the release time. When it is not set
-// nobody is grandfathered: the safe failure is that people verify once, not that new accounts skip verification.
-const verificationCutoff = () => {
-  const raw = process.env.AUTH_VERIFICATION_CUTOFF
-  if (!raw) return null
-  const parsed = new Date(raw)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
-}
-
-const isEmailVerified = member => {
-  if (member?.emailVerifiedAt) return true
-  const cutoff = verificationCutoff()
-  return Boolean(cutoff && member?.createdAt instanceof Date && member.createdAt.getTime() < cutoff.getTime())
-}
+// A customer is verified once they have proved the address (see checkCode and markVerified).
+const isEmailVerified = member => Boolean(member?.emailVerifiedAt)
 
 // Keyed with the account and address as well as the code, and under a prefix the booking OTP never uses.
 const digestFor = (member, code) => hmac('otp', `account-verification:${member._id}:${String(member.email).toLowerCase()}:${code}`, 'hex')
@@ -101,6 +88,6 @@ const checkCode = async (member, submitted, now = Date.now()) => {
 const markVerified = (memberId) => Member.updateOne({ _id: memberId, emailVerifiedAt: null }, { $set: { emailVerifiedAt: new Date() } })
 
 module.exports = {
-  isEmailVerified, verificationCutoff, issueCode, cancelCode, checkCode, markVerified,
+  isEmailVerified, issueCode, cancelCode, checkCode, markVerified,
   CODE_LIFETIME_MS, MAX_ATTEMPTS, RESEND_INTERVAL_MS, DAILY_LIMIT, DAY_MS,
 }

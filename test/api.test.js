@@ -6,9 +6,6 @@ process.env.EMAIL_DELIVERY_MODE = 'development'
 process.env.ENABLE_DEMO_SEED = 'true'
 process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = 'true'
 process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
-// These suites are about bids, payments and sockets: every account they create counts as email-verified.
-// Verification itself is covered by emailVerification.test.js.
-process.env.AUTH_VERIFICATION_CUTOFF = '2999-01-01T00:00:00Z'
 const { DEFAULT_TEST_URI, validateTestUri, connectTestDatabase, dropTestDatabase, resetTestDatabase } = require('./helpers/localDatabase')
 process.env.MONGO_URI = validateTestUri(process.env.TEST_MONGO_URI || DEFAULT_TEST_URI)
 // dotenv loaded by development seed helpers must not enable real integrations.
@@ -28,6 +25,9 @@ const Bid = require('../src/models/Bid')
 const Admin = require('../src/models/Admin')
 const Booking = require('../src/models/Booking')
 const Member = require('../src/models/Member')
+// This suite is about bids, payments, bookings and sockets, not email verification (emailVerification.test.js covers
+// that against the real check): customers created here are treated as verified.
+Member.prototype.isEmailVerified = () => true
 const MembershipPayment = require('../src/models/MembershipPayment')
 const { DEMO_OTP, seedDemo } = require('../scripts/seedDemo')
 const { privateUploadDir } = require('../src/config/cloudinary')

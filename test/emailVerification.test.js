@@ -9,8 +9,6 @@ process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
 const { DEFAULT_TEST_URI, validateTestUri, connectTestDatabase, dropTestDatabase, resetTestDatabase } = require('./helpers/localDatabase')
 process.env.MONGO_URI = validateTestUri(process.env.TEST_MONGO_URI || DEFAULT_TEST_URI)
 for (const key of ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'GROQ_API_KEY', 'ML_SERVICE_KEY', 'RESEND_API_KEY']) process.env[key] = ''
-// Verification is under test here, so nobody is grandfathered unless a test sets a cutoff.
-delete process.env.AUTH_VERIFICATION_CUTOFF
 
 const { before, after, beforeEach, afterEach, describe, test } = require('node:test')
 const assert = require('node:assert/strict')
@@ -24,7 +22,6 @@ const Member = require('../src/models/Member')
 const Seller = require('../src/models/Seller')
 const EmailVerificationCode = require('../src/models/EmailVerificationCode')
 const email = require('../src/utils/email')
-const { validateRuntimeConfig } = require('../src/config/runtime')
 const { DAILY_LIMIT, MAX_ATTEMPTS, RESEND_INTERVAL_MS, DAY_MS, issueCode, isEmailVerified } = require('../src/utils/emailVerification')
 
 let app
@@ -47,7 +44,6 @@ beforeEach(async () => {
   await resetTestDatabase()
   mails = []
   process.env.EMAIL_DELIVERY_MODE = 'smtp'
-  delete process.env.AUTH_VERIFICATION_CUTOFF
   email.sendVerificationCodeEmail = async (to, details) => { mails.push({ to, ...details }) }
 })
 afterEach(() => {
@@ -55,7 +51,6 @@ afterEach(() => {
   process.env.EMAIL_DELIVERY_MODE = original.mode
   if (original.app === undefined) delete process.env.APP_MODE
   else process.env.APP_MODE = original.app
-  delete process.env.AUTH_VERIFICATION_CUTOFF
 })
 
 const person = { name: 'Verify Customer', email: 'verify-customer@example.com', phone: '+92 300 5550301', password: 'orchid-lantern-42' }
@@ -355,33 +350,13 @@ describe('verifying by another route', () => {
   })
 })
 
-describe('customers who existed before the release', () => {
-  test('count as verified when they were created before the cutoff, with no database change', async () => {
-    process.env.AUTH_VERIFICATION_CUTOFF = new Date(Date.now() + 3600_000).toISOString()
-    const response = await signUp()
-    assert.equal(response.body.user.emailVerified, true)
-    assert.equal((await Member.findOne({ email: person.email })).emailVerifiedAt, undefined)
-    const payment = await request(app).post('/api/payments/demo-complete').set(bearer(response.body))
-    assert.equal(payment.status, 201)
-  })
-
-  test('accounts created after the cutoff must verify', async () => {
-    process.env.AUTH_VERIFICATION_CUTOFF = new Date(Date.now() - 3600_000).toISOString()
-    assert.equal((await signUp()).body.user.emailVerified, false)
-  })
-
-  test('nobody is grandfathered when no cutoff is configured', async () => {
-    delete process.env.AUTH_VERIFICATION_CUTOFF
-    assert.equal((await signUp()).body.user.emailVerified, false)
+describe('seeded and older accounts', () => {
+  test('an account that never proved its address is unverified, whatever its age', async () => {
+    const member = await Member.create({ name: 'Old Member', email: 'old-member@example.com', password: 'orchid-lantern-42' })
+    await Member.collection.updateOne({ _id: member._id }, { $set: { createdAt: new Date('2020-01-01T00:00:00Z') } })
+    assert.equal((await Member.findById(member._id)).isEmailVerified(), false)
     assert.equal(isEmailVerified({ createdAt: new Date(0) }), false)
-    process.env.AUTH_VERIFICATION_CUTOFF = 'not-a-date'
-    assert.equal(isEmailVerified({ createdAt: new Date(0) }), false)
-  })
-
-  test('an invalid cutoff is rejected at startup', () => {
-    const base = { NODE_ENV: 'test', APP_MODE: 'demo', EMAIL_DELIVERY_MODE: 'development' }
-    assert.doesNotThrow(() => validateRuntimeConfig({ ...base, AUTH_VERIFICATION_CUTOFF: '2026-11-02T00:00:00Z' }))
-    assert.throws(() => validateRuntimeConfig({ ...base, AUTH_VERIFICATION_CUTOFF: 'soon' }), /AUTH_VERIFICATION_CUTOFF/)
+    assert.equal(isEmailVerified({ emailVerifiedAt: new Date() }), true)
   })
 
   test('the demo seed creates customers that are already verified', async () => {

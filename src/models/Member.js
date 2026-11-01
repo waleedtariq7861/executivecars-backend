@@ -18,8 +18,7 @@ const memberSchema = new mongoose.Schema({
   address:              { type: String, trim: true },
   city:                 { type: String, trim: true },
   role:                 { type: String, enum: ['user'], default: 'user' },
-  // Set when the owner proves the address (code sent to it, or the booking code). Customers created before the
-  // verification cutoff count as verified without this field; see utils/emailVerification.js.
+  // Set when the owner proves the address (code sent to it, or the booking code); see utils/emailVerification.js.
   emailVerifiedAt:      { type: Date },
   sellerApproved:       { type: Boolean, default: false },
   sellerBookingId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
