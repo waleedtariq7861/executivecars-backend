@@ -19,7 +19,8 @@ const { createApp } = require('../server/app')
 const Admin = require('../src/models/Admin')
 const Member = require('../src/models/Member')
 const LoginAttempt = require('../src/models/LoginAttempt')
-const PasswordResetToken = require('../src/models/PasswordResetToken')
+const PasswordResetCode = require('../src/models/PasswordResetCode')
+const { requestResetCode } = require('./helpers/resetCode')
 const { hashPassword, verifyPassword, verifyWithEqualCost } = require('../src/utils/passwordHash')
 const { validatePassword, isBreached } = require('../src/utils/passwordPolicy')
 const throttle = require('../src/utils/loginThrottle')
@@ -239,23 +240,19 @@ describe('policy is enforced on every way of choosing a password', () => {
     assert.equal((await login('violet-harbour-77')).status, 200)
   })
 
-  test('resetting a password applies the policy and keeps the link usable after a rejection', async () => {
+  test('resetting a password applies the policy and keeps the code usable after a rejection', async () => {
     await register()
-    const member = await Member.findOne({ email: person.email })
-    const rawToken = crypto.randomBytes(32).toString('hex')
-    await PasswordResetToken.create({
-      accountModel: 'member', accountId: member._id, tokenHash: crypto.createHash('sha256').update(rawToken).digest('hex'), expiresAt: new Date(Date.now() + 60_000),
-    })
-    const reset = password => request(app).post('/api/auth/reset-password').send({ token: rawToken, password })
+    const { code } = await requestResetCode(app, person.email)
+    const reset = password => request(app).post('/api/auth/reset-password').send({ email: person.email, code, password })
 
     const weak = await reset('letmein123')
     assert.equal(weak.status, 400)
     assert.equal(weak.body.code, 'PASSWORD_COMMON')
-    assert.equal(await PasswordResetToken.countDocuments(), 1, 'a rejected password must not burn the link')
+    assert.equal(await PasswordResetCode.countDocuments(), 1, 'a rejected password must not burn the code')
     const strong = await reset('amber-meadow-58')
     assert.equal(strong.status, 200)
     assert.equal((await login('amber-meadow-58')).status, 200)
-    assert.equal((await reset('another-pass-99')).status, 400, 'the link works once')
+    assert.equal((await reset('another-pass-99')).status, 400, 'the code works once')
   })
 })
 
@@ -265,11 +262,8 @@ describe('accounts whose password is not an Argon2id hash', () => {
     await Member.collection.updateOne({ _id: member._id }, { $set: { password: BCRYPT_HASH } })
     assert.equal((await login('anything-at-all-1')).status, 401)
 
-    const token = crypto.randomBytes(32).toString('hex')
-    await PasswordResetToken.create({
-      accountModel: 'member', accountId: member._id, tokenHash: crypto.createHash('sha256').update(token).digest('hex'), expiresAt: new Date(Date.now() + 60_000),
-    })
-    const reset = await request(app).post('/api/auth/reset-password').send({ token, password: 'violet-harbour-77' })
+    const { code } = await requestResetCode(app, person.email)
+    const reset = await request(app).post('/api/auth/reset-password').send({ email: person.email, code, password: 'violet-harbour-77' })
     assert.equal(reset.status, 200)
     assert.equal((await login('violet-harbour-77')).status, 200)
     assert.match((await Member.findById(member._id)).password, /^\$argon2id\$/)

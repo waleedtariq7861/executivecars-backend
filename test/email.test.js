@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const axios = require('axios')
-const { sendOTPEmail, sendPasswordResetEmail } = require('../src/utils/email')
+const { sendOTPEmail, sendPasswordResetCodeEmail } = require('../src/utils/email')
 const { validateRuntimeConfig } = require('../src/config/runtime')
 
 const setEnv = (t, values) => {
@@ -33,7 +33,7 @@ test('Resend sends OTP and reset email through HTTPS with the configured sender'
   t.after(() => { axios.post = originalPost })
 
   await sendOTPEmail('member@example.com', '123456')
-  await sendPasswordResetEmail('member@example.com', 'https://example.com/reset-password?token=test')
+  await sendPasswordResetCodeEmail('member@example.com', { name: 'Member', code: '654321' })
 
   assert.equal(requests.length, 2)
   for (const [url, payload, options] of requests) {
@@ -44,7 +44,8 @@ test('Resend sends OTP and reset email through HTTPS with the configured sender'
     assert.equal(options.timeout, 10000)
   }
   assert.match(requests[0][1].html, /123456/)
-  assert.match(requests[1][1].html, /https:\/\/example.com\/reset-password/)
+  assert.match(requests[1][1].html, /654321/)
+  assert.doesNotMatch(requests[1][1].html, /reset-password\?token/)
 })
 
 test('Resend configuration and provider errors fail without exposing the provider response', async t => {
