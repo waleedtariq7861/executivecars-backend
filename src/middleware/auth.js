@@ -1,38 +1,37 @@
-const jwt = require('jsonwebtoken')
 const Admin  = require('../models/Admin')
 const Member = require('../models/Member')
-const Seller = require('../models/Seller')
 const { sessionTokenFromRequest } = require('../utils/session')
+const sessions = require('../utils/sessions')
+
+const ACCOUNT_MODELS = { member: Member, admin: Admin }
+
+// Browsers authenticate with the HttpOnly session cookie. A Bearer header is accepted
+// only under NODE_ENV=test, where the sign-in response exposes the token to the suite.
+const bearerForTests = req => {
+  const header = req.headers.authorization
+  return process.env.NODE_ENV === 'test' && header?.startsWith('Bearer ') ? header.slice(7) : ''
+}
+
+const reject = (res, code, message = sessions.MESSAGES[code]) => res.status(401).json({ message, code })
 
 const protect = async (req, res, next) => {
-  const header = req.headers.authorization
-  const bearerToken = header?.startsWith('Bearer ') ? header.slice(7) : ''
-  const token = sessionTokenFromRequest(req) || bearerToken
-  if (!token) return res.status(401).json({ message: 'Not authenticated' })
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    let user = null
+    const { session, code } = await sessions.findValidSession(sessionTokenFromRequest(req) || bearerForTests(req))
+    if (!session) return reject(res, code)
 
-    if (decoded.role === 'admin') {
-      user = await Admin.findById(decoded.id).select('-password')
-      req.accountRole = 'admin'
-      req.accountModel = 'admin'
-    } else if (decoded.role === 'user' || decoded.role === 'buyer') {
-      user = await Member.findById(decoded.id).select('-password')
-      req.accountRole = 'user'
-      req.accountModel = 'member'
-    } else if (decoded.role === 'seller') {
-      user = await Seller.findById(decoded.id).select('-password')
-      req.accountRole = 'user'
-      req.accountModel = 'seller'
+    const user = await ACCOUNT_MODELS[session.accountModel]?.findById(session.accountId).select('-password')
+    if (!user) {
+      await sessions.revokeSession(session, 'account_missing')
+      return reject(res, sessions.CODES.missing, 'User not found')
     }
 
-    if (!user) return res.status(401).json({ message: 'User not found' })
     req.user = user
-    next()
-  } catch {
-    return res.status(401).json({ message: 'Invalid or expired token' })
+    req.session = session
+    req.accountRole = session.role
+    req.accountModel = session.accountModel
+    return next()
+  } catch (error) {
+    return next(error)
   }
 }
 

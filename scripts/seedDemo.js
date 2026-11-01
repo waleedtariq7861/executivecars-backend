@@ -1,6 +1,5 @@
 require('dotenv').config()
 
-const crypto = require('crypto')
 const mongoose = require('mongoose')
 const connectDB = require('../src/config/db')
 const Admin = require('../src/models/Admin')
@@ -12,6 +11,7 @@ const Bid = require('../src/models/Bid')
 const OtpChallenge = require('../src/models/OtpChallenge')
 const MembershipPayment = require('../src/models/MembershipPayment')
 const { demoAccounts: configuredDemoAccounts } = require('../src/config/demoAccounts')
+const { hmac } = require('../src/utils/crypto')
 
 const DEMO_PREFIX = 'executive-cars-demo:'
 const key = name => `${DEMO_PREFIX}${name}`
@@ -58,7 +58,7 @@ const syncRecord = (Model, demoKey, fields) => Model.findOneAndUpdate(
   { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true },
 )
 
-const otpDigest = (email, otp) => crypto.createHmac('sha256', process.env.JWT_SECRET).update(`${email}:${otp}`).digest('hex')
+const otpDigest = (email, otp) => hmac('otp', `${email}:${otp}`, 'hex')
 
 const seedDemo = async () => {
   requireDemoSeed()
