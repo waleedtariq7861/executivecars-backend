@@ -30,7 +30,6 @@ const memberSchema = new mongoose.Schema({
   membershipSource:     { type: String, enum: ['demo'], default: undefined },
   checkoutSessionId:    { type: String },
   savedCars:            [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
-  demoKey:              { type: String, sparse: true, index: true },
 }, { timestamps: true })
 
 memberSchema.plugin(passwordPlugin)

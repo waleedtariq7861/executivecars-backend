@@ -198,32 +198,29 @@ for (const scenario of [
   })
 }
 
-test('missing key uses deterministic fallback only in explicit demo mode', async () => {
+test('without an AI key the assistant is unavailable in every mode: no canned answers', async () => {
   const originalKey = process.env.GROQ_API_KEY
   const originalMode = process.env.APP_MODE
-  const originalNodeEnv = process.env.NODE_ENV
   delete process.env.GROQ_API_KEY
-  process.env.APP_MODE = 'demo'
-  process.env.NODE_ENV = 'test'
   try {
-    const demo = responseRecorder()
-    await chat({ body: { messages: [{ role: 'user', content: 'How do auctions work?' }] } }, demo.response)
-    assert.equal(demo.record.statusCode, 200)
-    assert.match(demo.record.body.reply, /active auction membership/)
+    for (const mode of ['demo', 'production']) {
+      process.env.APP_MODE = mode
+      const reply = responseRecorder()
+      await chat({ body: { messages: [{ role: 'user', content: 'How do auctions work?' }] } }, reply.response)
+      assert.equal(reply.record.statusCode, 503)
+      assert.equal(reply.record.body.code, 'not_configured')
+      assert.equal(reply.record.body.reply, undefined)
 
-    process.env.APP_MODE = 'production'
-    process.env.NODE_ENV = 'production'
-    const production = responseRecorder()
-    await chat({ body: { messages: [{ role: 'user', content: 'Hello' }] } }, production.response)
-    assert.equal(production.record.statusCode, 503)
-    assert.equal(production.record.body.code, 'not_configured')
+      const health = responseRecorder()
+      await chatHealth({}, health.response)
+      assert.equal(health.record.statusCode, 503)
+      assert.deepEqual(health.record.body, { configured: false, providerReachable: false, modelUsable: false, status: 'unavailable' })
+    }
   } finally {
     if (originalKey === undefined) delete process.env.GROQ_API_KEY
     else process.env.GROQ_API_KEY = originalKey
     if (originalMode === undefined) delete process.env.APP_MODE
     else process.env.APP_MODE = originalMode
-    if (originalNodeEnv === undefined) delete process.env.NODE_ENV
-    else process.env.NODE_ENV = originalNodeEnv
     resetChatCapabilityCache()
   }
 })
@@ -250,7 +247,7 @@ test('chat health validates the exact configured model once and returns cached p
     assert.equal(calls, 1)
     assert.equal(probeBody.model, 'health-test-model')
     assert.equal(probeBody.tool_choice, 'none')
-    assert.deepEqual(first.record.body, { configured: true, providerReachable: true, modelUsable: true, demoFallback: false, status: 'available' })
+    assert.deepEqual(first.record.body, { configured: true, providerReachable: true, modelUsable: true, status: 'available' })
     assert.deepEqual(second.record.body, first.record.body)
   } finally {
     axios.post = originalPost

@@ -56,7 +56,6 @@ const createApp = ({ io } = {}) => {
   app.use('/api/vehicle-options', require('../src/routes/vehicleOptions'))
   app.use('/api/chat', require('../src/routes/chat'))
   app.use('/api/documents', require('../src/routes/documents'))
-  app.use('/api/demo', require('../src/routes/demo'))
 
   app.get('/api/health', (req, res) => res.json({
     status: 'ok',

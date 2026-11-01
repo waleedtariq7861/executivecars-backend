@@ -6,7 +6,6 @@ const otpChallengeSchema = new mongoose.Schema({
   expiresAt:  { type: Date, required: true, expires: 0 },
   verified:   { type: Boolean, default: false },
   attempts:   { type: Number, default: 0 },
-  demoKey:    { type: String, sparse: true, index: true },
 }, { timestamps: true })
 
 module.exports = mongoose.model('OtpChallenge', otpChallengeSchema)
