@@ -29,6 +29,7 @@ const MembershipPayment = require('../src/models/MembershipPayment')
 const { DEMO_OTP, seedDemo } = require('../scripts/seedDemo')
 const { privateUploadDir } = require('../src/config/cloudinary')
 const { validateRuntimeConfig } = require('../src/config/runtime')
+const { hmac } = require('../src/utils/crypto')
 
 let app
 
@@ -104,7 +105,7 @@ test('browser sessions use HttpOnly cookies, restore safely, enforce CSRF, and l
     assert.ok(registration.body.csrfToken)
     assert.match(registration.headers['set-cookie'][0], /ec_session=/)
     assert.match(registration.headers['set-cookie'][0], /HttpOnly/i)
-    assert.match(registration.headers['set-cookie'][0], /SameSite=Lax/i)
+    assert.match(registration.headers['set-cookie'][0], /SameSite=Strict/i)
 
     const restored = await browser.get('/api/auth/session')
     assert.equal(restored.status, 200)
@@ -296,7 +297,7 @@ test('private documents require authorization and short-lived access links', asy
     assert.equal(directLegacyPath.status, 404)
 
     const expiredPayload = Buffer.from(JSON.stringify({ key, contentType: 'application/pdf', extension: '.pdf', exp: 1 })).toString('base64url')
-    const expiredSignature = crypto.createHmac('sha256', process.env.JWT_SECRET).update(expiredPayload).digest('base64url')
+    const expiredSignature = hmac('document', expiredPayload)
     const expired = await request(app).get(`/api/documents/access/${expiredPayload}.${expiredSignature}`)
     assert.equal(expired.status, 403)
 

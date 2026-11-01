@@ -3,8 +3,18 @@ const isDemoMode = (env = process.env) => appMode(env) === 'demo' && env.NODE_EN
 
 const placeholderSecret = value => !value || value.length < 32 || /your_|change[-_ ]?me|local-development|example/i.test(value)
 
+const SESSION_SETTINGS = [
+  'SESSION_CUSTOMER_IDLE_DAYS', 'SESSION_CUSTOMER_ABSOLUTE_DAYS', 'SESSION_ADMIN_IDLE_MINUTES', 'SESSION_ADMIN_ABSOLUTE_HOURS',
+]
+
 const validateRuntimeConfig = (env = process.env) => {
   const mode = appMode(env)
+  for (const name of SESSION_SETTINGS) {
+    if (env[name] !== undefined && env[name] !== '' && !(Number(env[name]) > 0)) throw new Error(`${name} must be a positive number`)
+  }
+  if (env.SESSION_COOKIE_SAMESITE && !['strict', 'lax'].includes(String(env.SESSION_COOKIE_SAMESITE).toLowerCase())) {
+    throw new Error('SESSION_COOKIE_SAMESITE must be strict or lax')
+  }
   const emailMode = String(env.EMAIL_DELIVERY_MODE || 'smtp').trim().toLowerCase()
   if (!['demo', 'production'].includes(mode)) throw new Error('APP_MODE must be demo or production')
   if (env.ENABLE_HOSTED_DEMO_MEMBERSHIP !== undefined && !['true', 'false'].includes(env.ENABLE_HOSTED_DEMO_MEMBERSHIP)) {

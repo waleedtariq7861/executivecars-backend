@@ -1,20 +1,21 @@
-const crypto = require('crypto')
+const { hmac } = require('./crypto')
 
-const SESSION_COOKIE = 'ec_session'
+const isProduction = () => process.env.NODE_ENV === 'production'
 
-const parseDurationMs = (value = '7d') => {
-  const match = String(value).trim().match(/^(\d+)([smhd])$/i)
-  if (!match) return 7 * 24 * 60 * 60 * 1000
-  const multipliers = { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 }
-  return Number(match[1]) * multipliers[match[2].toLowerCase()]
-}
+// "__Host-" makes browsers refuse the cookie unless it is Secure, host-only and Path=/.
+// It needs HTTPS, so local HTTP development keeps the plain name. Fixed when the process starts:
+// a cookie that is already in a browser must keep its name for the life of the server.
+const COOKIE_NAME = isProduction() ? '__Host-ec_session' : 'ec_session'
+const sessionCookieName = () => COOKIE_NAME
 
-const cookieOptions = () => ({
+const sameSite = () => (String(process.env.SESSION_COOKIE_SAMESITE || '').toLowerCase() === 'lax' ? 'lax' : 'strict')
+
+const cookieOptions = maxAgeMs => ({
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  secure: isProduction(),
+  sameSite: sameSite(),
   path: '/',
-  maxAge: parseDurationMs(process.env.JWT_EXPIRES_IN),
+  maxAge: maxAgeMs,
 })
 
 const parseCookies = header => Object.fromEntries(
@@ -25,29 +26,24 @@ const parseCookies = header => Object.fromEntries(
   }),
 )
 
-const sessionTokenFromRequest = req => parseCookies(req.headers.cookie)[SESSION_COOKIE] || ''
+const sessionTokenFromRequest = req => parseCookies(req.headers.cookie)[sessionCookieName()] || ''
 
-const csrfTokenForSession = token => crypto
-  .createHmac('sha256', process.env.JWT_SECRET)
-  .update(`csrf:${token}`)
-  .digest('base64url')
+const csrfTokenForSession = token => hmac('csrf', `csrf:${token}`)
 
-const attachSession = (res, token) => {
-  res.cookie(SESSION_COOKIE, token, cookieOptions())
+const attachSession = (res, token, maxAgeMs) => {
+  res.cookie(sessionCookieName(), token, cookieOptions(maxAgeMs))
   return csrfTokenForSession(token)
 }
 
-const clearSession = res => res.clearCookie(SESSION_COOKIE, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
-  path: '/',
-})
+const clearSession = res => {
+  const { maxAge, ...options } = cookieOptions()
+  return res.clearCookie(sessionCookieName(), options)
+}
 
 module.exports = {
-  SESSION_COOKIE,
   attachSession,
   clearSession,
   csrfTokenForSession,
+  sessionCookieName,
   sessionTokenFromRequest,
 }

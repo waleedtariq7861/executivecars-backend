@@ -12,7 +12,7 @@ router.post('/member/login',    authLimiter, memberLogin)
 router.post('/seller/login',    authLimiter, sellerLogin)
 router.post('/change-password', protect, changePassword)
 router.get('/session',             protect, session)
-router.post('/logout',             protect, logout)
+router.post('/logout',             logout)
 router.post('/forgot-password', authLimiter, requestPasswordReset)
 router.post('/reset-password',  authLimiter, resetPassword)
 

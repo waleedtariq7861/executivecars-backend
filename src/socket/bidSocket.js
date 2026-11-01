@@ -1,7 +1,7 @@
-const jwt = require('jsonwebtoken')
 const mongoose = require('mongoose')
 const Member = require('../models/Member')
 const { sessionTokenFromRequest } = require('../utils/session')
+const sessions = require('../utils/sessions')
 
 const MEMBERSHIP_RECHECK_MS = 60_000
 
@@ -15,35 +15,30 @@ const initSocket = (io) => {
     const token = sessionTokenFromRequest({ headers: socket.handshake.headers }) || socket.handshake.auth?.token
     if (!token) return next(new Error('Authentication required'))
 
-    let decoded
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET)
-    } catch {
-      return next(new Error('Invalid token'))
-    }
+      const { session } = await sessions.findValidSession(token)
+      if (!session) return next(new Error('Invalid token'))
+      if (session.role !== 'user' || session.accountModel !== 'member') return next(new Error('Active membership required'))
 
-    if (decoded.role !== 'user' && decoded.role !== 'buyer') {
-      return next(new Error('Active membership required'))
-    }
-
-    try {
-      const member = await activeMember(decoded.id)
+      const member = await activeMember(session.accountId)
       if (!member) return next(new Error('Active membership required'))
       socket.userId = member._id.toString()
-      socket.sessionExpiresAt = decoded.exp ? decoded.exp * 1000 : Infinity
+      socket.sessionId = session._id.toString()
       next()
     } catch {
-      next(new Error('Unable to verify membership'))
+      next(new Error('Unable to verify session'))
     }
   })
 
   io.on('connection', (socket) => {
     socket.join(`user-${socket.userId}`)
+    // Revoking a session disconnects exactly the sockets that were opened with it.
+    socket.join(`session-${socket.sessionId}`)
     const desiredAuctions = new Set()
 
     const recheckAccess = async () => {
       try {
-        if (Date.now() >= socket.sessionExpiresAt || !(await activeMember(socket.userId))) {
+        if (!(await sessions.isSessionActive(socket.sessionId)) || !(await activeMember(socket.userId))) {
           socket.disconnect(true)
           return false
         }

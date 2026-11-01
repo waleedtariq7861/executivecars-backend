@@ -2,6 +2,9 @@ const crypto = require('crypto')
 const { csrfTokenForSession, sessionTokenFromRequest } = require('../utils/session')
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+// Signing out must work even when the CSRF token can no longer be derived (stale or expired session);
+// forcing a sign-out is harmless, so only the Origin is checked.
+const ORIGIN_ONLY_PATHS = new Set(['/api/auth/logout'])
 const UNAUTHENTICATED_AUTH_PATHS = new Set([
   '/api/auth/admin/login',
   '/api/auth/register',
@@ -28,6 +31,7 @@ const csrfProtection = allowedOrigins => (req, res, next) => {
   if (!origin || !allowedOrigins.includes(origin)) {
     return res.status(403).json({ message: 'Request origin could not be verified' })
   }
+  if (ORIGIN_ONLY_PATHS.has(req.path)) return next()
 
   const supplied = req.get('x-csrf-token')
   if (!safelyEqual(supplied, csrfTokenForSession(sessionToken))) {

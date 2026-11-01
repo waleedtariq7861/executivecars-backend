@@ -7,6 +7,7 @@ const Product = require('../models/Product')
 const Car = require('../models/Car')
 const { cloudinary, privateUploadDir } = require('../config/cloudinary')
 const { handleControllerError } = require('../utils/http')
+const { hmac } = require('../utils/crypto')
 
 const ACCESS_LIFETIME_SECONDS = 120
 
@@ -29,14 +30,14 @@ const signLocalAccess = asset => {
     extension: asset.extension || '',
     exp: Math.floor(Date.now() / 1000) + ACCESS_LIFETIME_SECONDS,
   })).toString('base64url')
-  const signature = crypto.createHmac('sha256', process.env.JWT_SECRET).update(payload).digest('base64url')
+  const signature = hmac('document', payload)
   return `${payload}.${signature}`
 }
 
 const verifyLocalAccess = token => {
   const [payload, signature] = String(token || '').split('.')
   if (!payload || !signature) return null
-  const expected = crypto.createHmac('sha256', process.env.JWT_SECRET).update(payload).digest()
+  const expected = Buffer.from(hmac('document', payload), 'base64url')
   let received
   try { received = Buffer.from(signature, 'base64url') } catch { return null }
   if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) return null

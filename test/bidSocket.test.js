@@ -1,21 +1,32 @@
 const { after, test } = require('node:test')
 const assert = require('node:assert/strict')
-const jwt = require('jsonwebtoken')
 const mongoose = require('mongoose')
 const Member = require('../src/models/Member')
+const sessions = require('../src/utils/sessions')
 const initSocket = require('../src/socket/bidSocket')
 
-const previousSecret = process.env.JWT_SECRET
 const originalFindById = Member.findById
-process.env.JWT_SECRET = 'socket-test-secret'
+const originalFindValidSession = sessions.findValidSession
+const originalIsSessionActive = sessions.isSessionActive
 
 let lookup = async () => null
 Member.findById = id => ({ select: () => lookup(id) })
 
+// Sessions are stubbed so these tests stay database-free: "session:<accountId>:<role>" is a valid token.
+let sessionActive = true
+const sessionIds = new Map()
+sessions.findValidSession = async token => {
+  const [, accountId, role] = String(token).match(/^session:(\w+):(\w+)$/) || []
+  if (!accountId) return { code: sessions.CODES.missing }
+  if (!sessionIds.has(token)) sessionIds.set(token, new mongoose.Types.ObjectId())
+  return { session: { _id: sessionIds.get(token), accountId, role: role === 'admin' ? 'admin' : 'user', accountModel: role === 'admin' ? 'admin' : 'member' } }
+}
+sessions.isSessionActive = async () => sessionActive
+
 after(() => {
   Member.findById = originalFindById
-  if (previousSecret === undefined) delete process.env.JWT_SECRET
-  else process.env.JWT_SECRET = previousSecret
+  sessions.findValidSession = originalFindValidSession
+  sessions.isSessionActive = originalIsSessionActive
 })
 
 const member = (status = 'active', expiry = Date.now() + 60_000) => new Member({
@@ -24,7 +35,7 @@ const member = (status = 'active', expiry = Date.now() + 60_000) => new Member({
   subscriptionExpiry: new Date(expiry),
 })
 
-const tokenFor = (id, role = 'user') => jwt.sign({ id: id.toString(), role }, process.env.JWT_SECRET, { expiresIn: '1h' })
+const tokenFor = (id, role = 'user') => `session:${id.toString()}:${role}`
 
 const socketFor = token => {
   const handlers = new Map()
@@ -58,7 +69,7 @@ const connect = async (io, socket) => {
   return error
 }
 
-test('socket connections require a valid token and an active member record', async () => {
+test('socket connections require a valid session and an active member record', async () => {
   const io = server()
   const active = member()
   const inactive = member('inactive')
@@ -72,7 +83,9 @@ test('socket connections require a valid token and an active member record', asy
 
   const valid = socketFor(tokenFor(active.id))
   assert.equal(await connect(io, valid), undefined)
-  assert.deepEqual([...valid.rooms], [`user-${active.id}`])
+  assert.equal(valid.rooms.has(`user-${active.id}`), true)
+  // every socket also joins a room named after its session so a revoked session can be cut off
+  assert.equal([...valid.rooms].some(room => room.startsWith('session-')), true)
   valid.disconnect()
 })
 
@@ -113,9 +126,10 @@ test('expired memberships and sessions cannot keep auction room access', async (
   const socket = socketFor(tokenFor(active.id))
   await connect(io, socket)
 
-  socket.sessionExpiresAt = Date.now() - 1
+  sessionActive = false
   await socket.trigger('join-auction', new mongoose.Types.ObjectId().toString())
   assert.equal(socket.disconnected, true)
+  sessionActive = true
 
   const expired = member('active', Date.now() - 1)
   lookup = async () => expired

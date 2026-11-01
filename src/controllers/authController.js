@@ -1,4 +1,3 @@
-const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const Admin  = require('../models/Admin')
 const Member = require('../models/Member')
@@ -8,6 +7,7 @@ const { handleControllerError } = require('../utils/http')
 const { isDemoMode } = require('../config/runtime')
 const { sendPasswordResetEmail } = require('../utils/email')
 const { attachSession, clearSession, csrfTokenForSession, sessionTokenFromRequest } = require('../utils/session')
+const sessions = require('../utils/sessions')
 const {
   normalizePersonName,
   normalizePhone,
@@ -16,11 +16,10 @@ const {
 
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase()
 
-const signToken = (id, role) =>
-  jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' })
-
-const sendAuthenticated = (res, token, user, status = 200) => {
-  const body = { user, csrfToken: attachSession(res, token) }
+// Every sign-in creates a fresh server-side session and hands the browser its opaque token.
+const startSession = async (req, res, { account, accountModel, role, user, status = 200 }) => {
+  const { token, session } = await sessions.createSession({ account, accountModel, role, req })
+  const body = { user, csrfToken: attachSession(res, token, session.absoluteExpiresAt.getTime() - Date.now()) }
   if (process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS === 'true' && process.env.NODE_ENV === 'test') body.token = token
   return res.status(status).json(body)
 }
@@ -67,8 +66,10 @@ const adminLogin = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
-    const token = signToken(admin._id, 'admin')
-    sendAuthenticated(res, token, { id: admin._id, name: admin.name, email: admin.email, role: 'admin' })
+    await startSession(req, res, {
+      account: admin, accountModel: 'admin', role: 'admin',
+      user: { id: admin._id, name: admin.name, email: admin.email, role: 'admin' },
+    })
   } catch (err) {
     handleControllerError(res, err, 'Admin sign in failed')
   }
@@ -99,8 +100,7 @@ const accountRegister = async (req, res) => {
     }
 
     const account = await Member.create({ name, email, phone, password, role: 'user' })
-    const token = signToken(account._id, 'user')
-    sendAuthenticated(res, token, accountPayload(account), 201)
+    await startSession(req, res, { account, accountModel: 'member', role: 'user', user: accountPayload(account), status: 201 })
   } catch (err) {
     handleControllerError(res, err, 'Registration failed')
   }
@@ -151,8 +151,7 @@ const accountLogin = async (req, res) => {
 
     await expireMembershipIfNeeded(account)
 
-    const token = signToken(account._id, 'user')
-    sendAuthenticated(res, token, accountPayload(account))
+    await startSession(req, res, { account, accountModel: 'member', role: 'user', user: accountPayload(account) })
   } catch (err) {
     handleControllerError(res, err, 'Sign in failed')
   }
@@ -174,6 +173,10 @@ const changePassword = async (req, res) => {
 
     fresh.password = newPassword
     await fresh.save()
+    // Anyone holding an older session (another device, a stolen cookie) is signed out; this one stays.
+    await sessions.revokeAccountSessions({
+      accountModel: req.accountModel, accountId: fresh._id, exceptId: req.session?._id, reason: 'password_changed', io: req.app.get('io'),
+    })
     res.json({ message: 'Password updated successfully' })
   } catch (err) {
     handleControllerError(res, err, 'Password update failed')
@@ -196,10 +199,21 @@ const session = async (req, res) => {
   res.json({ user, csrfToken: csrfTokenForSession(token) })
 }
 
-const logout = (req, res) => {
-  clearSession(res)
-  res.set('Cache-Control', 'no-store')
-  res.json({ message: 'Signed out successfully' })
+// Works with any cookie, even a stale one: the session (if it still exists) is revoked on the server
+// and the cookie is always expired, so signing out never depends on the session being valid.
+const logout = async (req, res) => {
+  try {
+    const token = sessionTokenFromRequest(req)
+    if (token) {
+      const { session } = await sessions.findSession(token)
+      if (session) await sessions.revokeSession(session, 'logout', req.app.get('io'))
+    }
+    clearSession(res)
+    res.set('Cache-Control', 'no-store')
+    res.json({ message: 'Signed out successfully' })
+  } catch (err) {
+    handleControllerError(res, err, 'Could not sign out')
+  }
 }
 
 const requestPasswordReset = async (req, res) => {
@@ -249,6 +263,8 @@ const resetPassword = async (req, res) => {
     account.password = password
     await account.save()
     await PasswordResetToken.deleteMany({ accountId: account._id })
+    // Whoever had the old password may still hold a session: end them all after a reset.
+    await sessions.revokeAccountSessions({ accountModel: 'member', accountId: account._id, reason: 'password_reset', io: req.app.get('io') })
     res.json({ message: 'Password reset successfully. You can now sign in.' })
   } catch (error) {
     handleControllerError(res, error, 'Could not reset password')

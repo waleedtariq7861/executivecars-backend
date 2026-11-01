@@ -1,5 +1,6 @@
 const crypto = require('crypto')
 const Booking = require('../models/Booking')
+const { hmac } = require('../utils/crypto')
 const OtpChallenge = require('../models/OtpChallenge')
 const { sendOTPEmail, sendBookingConfirmationEmail } = require('../utils/email')
 const { storedPrivateAsset } = require('../config/cloudinary')
@@ -16,10 +17,7 @@ const {
 } = require('../utils/inputValidation')
 
 const normalizeEmail = (email = '') => email.trim().toLowerCase()
-const digestOTP = (email, otp) => crypto
-  .createHmac('sha256', process.env.JWT_SECRET)
-  .update(`${email}:${otp}`)
-  .digest('hex')
+const digestOTP = (email, otp) => hmac('otp', `${email}:${otp}`, 'hex')
 
 const authenticatedEmail = (req, res) => {
   const email = normalizeEmail(req.user?.email)
