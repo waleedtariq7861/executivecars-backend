@@ -8,6 +8,9 @@ const { isDemoMode } = require('../config/runtime')
 const { sendPasswordResetEmail } = require('../utils/email')
 const { attachSession, clearSession, csrfTokenForSession, sessionTokenFromRequest } = require('../utils/session')
 const sessions = require('../utils/sessions')
+const loginThrottle = require('../utils/loginThrottle')
+const { hashPassword, verifyWithEqualCost } = require('../utils/passwordHash')
+const { validatePassword } = require('../utils/passwordPolicy')
 const {
   normalizePersonName,
   normalizePhone,
@@ -15,6 +18,42 @@ const {
 } = require('../utils/inputValidation')
 
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase()
+
+const MAX_LOGIN_PASSWORD_LENGTH = 1024
+
+const loginInputIsValid = (email, password) => /^\S+@\S+\.\S+$/.test(email)
+  && typeof password === 'string' && password.length > 0 && password.length <= MAX_LOGIN_PASSWORD_LENGTH
+
+const secondsLabel = (seconds) => (seconds >= 120 ? `${Math.ceil(seconds / 60)} minutes` : `${seconds} second${seconds === 1 ? '' : 's'}`)
+
+// 429 with Retry-After while a throttle delay is running. Returns true when it answered.
+const rejectIfThrottled = async (res, kind, who) => {
+  const wait = await loginThrottle.check(kind, who)
+  if (!wait) return false
+  res.set('Retry-After', String(wait))
+  res.status(429).json({
+    message: `Too many failed sign-in attempts. Try again in ${secondsLabel(wait)}.`,
+    code: 'LOGIN_THROTTLED',
+    retryAfterSeconds: wait,
+  })
+  return true
+}
+
+const passwordProblem = (res, result) => res.status(400).json({
+  message: result.message, code: result.code, errors: { password: result.message },
+})
+
+// An older bcrypt hash is replaced by Argon2id the first time its owner signs in. Written directly (not
+// through save()) so validation of unrelated fields cannot block a sign-in, and it does not count as a
+// password change. A failure here must never fail the sign-in itself.
+const upgradeHashIfNeeded = async (Model, account, password) => {
+  if (!account.passwordNeedsRehash()) return
+  try {
+    await Model.updateOne({ _id: account._id }, { $set: { password: await hashPassword(password) } })
+  } catch (error) {
+    console.error('Password hash upgrade failed:', error.message)
+  }
+}
 
 // Every sign-in creates a fresh server-side session and hands the browser its opaque token.
 const startSession = async (req, res, { account, accountModel, role, user, status = 200 }) => {
@@ -57,15 +96,22 @@ const adminLogin = async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email)
     const { password } = req.body
-    if (!/^\S+@\S+\.\S+$/.test(email) || typeof password !== 'string' || !password) {
+    if (!loginInputIsValid(email, password)) {
       return res.status(400).json({ message: 'A valid email and password are required' })
     }
 
+    const who = { ip: req.ip, email }
+    if (await rejectIfThrottled(res, 'admin', who)) return
+
     const admin = await Admin.findOne({ email })
-    if (!admin || !(await admin.matchPassword(password))) {
+    const valid = await verifyWithEqualCost(password, admin?.password)
+    if (!admin || !valid) {
+      await loginThrottle.recordFailure('admin', who)
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
+    await loginThrottle.recordSuccess('admin', who)
+    await upgradeHashIfNeeded(Admin, admin, password)
     await startSession(req, res, {
       account: admin, accountModel: 'admin', role: 'admin',
       user: { id: admin._id, name: admin.name, email: admin.email, role: 'admin' },
@@ -89,7 +135,8 @@ const accountRegister = async (req, res) => {
         errors,
       })
     }
-    if (password.length < 8) return res.status(400).json({ message: 'Password must be at least 8 characters' })
+    const policy = await validatePassword(password, { email, name })
+    if (!policy.ok) return passwordProblem(res, policy)
 
     const exists = await Member.findOne({ email })
     if (exists) return res.status(409).json({ message: 'Email already registered' })
@@ -110,16 +157,22 @@ const accountLogin = async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email)
     const { password } = req.body
-    if (!/^\S+@\S+\.\S+$/.test(email) || typeof password !== 'string' || !password) {
+    if (!loginInputIsValid(email, password)) {
       return res.status(400).json({ message: 'A valid email and password are required' })
     }
 
+    const who = { ip: req.ip, email }
+    if (await rejectIfThrottled(res, 'member', who)) return
+
     let account = await Member.findOne({ email })
     const legacySeller = await Seller.findOne({ email })
-    let valid = account ? await account.matchPassword(password) : false
+    // Every attempt does the same hashing work whether or not the account exists (see passwordHash.js).
+    let valid = await verifyWithEqualCost(password, account?.password)
+    let sellerValid = false
+    if (!valid) sellerValid = await verifyWithEqualCost(password, legacySeller?.password)
 
     // Transparently migrate a legacy seller the first time they use unified sign-in.
-    if (!valid && legacySeller && await legacySeller.matchPassword(password)) {
+    if (!valid && legacySeller && sellerValid) {
       if (!account) {
         account = await Member.create({
           name: legacySeller.name,
@@ -141,7 +194,13 @@ const accountLogin = async (req, res) => {
       valid = true
     }
 
-    if (!account || !valid) return res.status(401).json({ message: 'Invalid credentials' })
+    if (!account || !valid) {
+      await loginThrottle.recordFailure('member', who)
+      return res.status(401).json({ message: 'Invalid credentials' })
+    }
+
+    await loginThrottle.recordSuccess('member', who)
+    await upgradeHashIfNeeded(Member, account, password)
 
     if (legacySeller && !account.sellerApproved) {
       account.sellerApproved = true
@@ -163,13 +222,20 @@ const changePassword = async (req, res) => {
     if (typeof current !== 'string' || typeof newPassword !== 'string' || !current || !newPassword) {
       return res.status(400).json({ message: 'Both password fields are required' })
     }
-    if (newPassword.length < 8) return res.status(400).json({ message: 'New password must be at least 8 characters' })
 
     const Model = req.accountRole === 'admin' ? Admin : req.accountModel === 'seller' ? Seller : Member
     const fresh = await Model.findById(req.user._id)
     if (!fresh) return res.status(401).json({ message: 'Account not found' })
     // 400, not 401: the session is valid and clients treat 401 as "signed out".
-    if (!(await fresh.matchPassword(current))) return res.status(400).json({ message: 'Current password is incorrect' })
+    if (!(await fresh.matchPassword(current))) {
+      return res.status(400).json({ message: 'Current password is incorrect', errors: { current: 'Current password is incorrect' } })
+    }
+    if (newPassword === current) {
+      const message = 'Choose a password different from your current one.'
+      return res.status(400).json({ message, code: 'PASSWORD_UNCHANGED', errors: { password: message } })
+    }
+    const policy = await validatePassword(newPassword, { email: fresh.email, name: fresh.name })
+    if (!policy.ok) return passwordProblem(res, policy)
 
     fresh.password = newPassword
     await fresh.save()
@@ -252,7 +318,7 @@ const resetPassword = async (req, res) => {
     const token = String(req.body.token || '')
     const password = req.body.password
     if (!/^[a-f0-9]{64}$/i.test(token)) return res.status(400).json({ message: 'Invalid or expired reset link' })
-    if (typeof password !== 'string' || password.length < 8) return res.status(400).json({ message: 'Password must be at least 8 characters' })
+    if (typeof password !== 'string') return res.status(400).json({ message: 'Enter a new password', errors: { password: 'Enter a new password' } })
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
     const resetRecord = await PasswordResetToken.findOne({ tokenHash, expiresAt: { $gt: new Date() } })
@@ -260,6 +326,9 @@ const resetPassword = async (req, res) => {
 
     const account = await Member.findById(resetRecord.accountId)
     if (!account) return res.status(400).json({ message: 'Invalid or expired reset link' })
+    // The link stays valid when the new password is rejected, so the person can simply try another one.
+    const policy = await validatePassword(password, { email: account.email, name: account.name })
+    if (!policy.ok) return passwordProblem(res, policy)
     account.password = password
     await account.save()
     await PasswordResetToken.deleteMany({ accountId: account._id })

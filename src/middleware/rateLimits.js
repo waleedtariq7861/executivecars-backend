@@ -1,18 +1,48 @@
 const { rateLimit } = require('express-rate-limit')
 
-const createLimiter = ({ windowMs, limit, message }) => rateLimit({
+const createLimiter = ({ windowMs, limit, message, skipSuccessfulRequests = false }) => rateLimit({
   windowMs,
   limit,
+  skipSuccessfulRequests,
   skip: () => process.env.NODE_ENV === 'test',
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  message: { message },
+  message: { message, code: 'RATE_LIMITED' },
 })
 
-const authLimiter = createLimiter({
+// Sign-in attempts are also throttled per account and address in MongoDB (utils/loginThrottle.js); these
+// limiters are a coarse flood guard per process. Each endpoint has its own budget, so a busy login page
+// cannot lock people out of registering or resetting a password.
+const loginLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  skipSuccessfulRequests: true,
+  message: 'Too many sign-in attempts. Please try again in 15 minutes.',
+})
+
+const adminLoginLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  skipSuccessfulRequests: true,
+  message: 'Too many sign-in attempts. Please try again in 15 minutes.',
+})
+
+const registerLimiter = createLimiter({
+  windowMs: 60 * 60 * 1000,
+  limit: 15,
+  message: 'Too many accounts were created from this connection. Please try again later.',
+})
+
+const forgotPasswordLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 8,
+  message: 'Too many password reset requests. Please try again in 15 minutes.',
+})
+
+const resetPasswordLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   limit: 10,
-  message: 'Too many sign-in attempts. Please try again in 15 minutes.',
+  message: 'Too many password reset attempts. Please try again in 15 minutes.',
 })
 
 const otpLimiter = createLimiter({
@@ -33,4 +63,4 @@ const chatLimiter = createLimiter({
   message: 'Too many assistant requests. Please wait a minute and try again.',
 })
 
-module.exports = { authLimiter, otpLimiter, predictionLimiter, chatLimiter }
+module.exports = { loginLimiter, adminLoginLimiter, registerLimiter, forgotPasswordLimiter, resetPasswordLimiter, otpLimiter, predictionLimiter, chatLimiter }

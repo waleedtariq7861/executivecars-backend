@@ -15,6 +15,9 @@ const validateRuntimeConfig = (env = process.env) => {
   if (env.SESSION_COOKIE_SAMESITE && !['strict', 'lax'].includes(String(env.SESSION_COOKIE_SAMESITE).toLowerCase())) {
     throw new Error('SESSION_COOKIE_SAMESITE must be strict or lax')
   }
+  if (env.HIBP_ENABLED && !['true', 'false'].includes(String(env.HIBP_ENABLED).toLowerCase())) {
+    throw new Error('HIBP_ENABLED must be true or false')
+  }
   const emailMode = String(env.EMAIL_DELIVERY_MODE || 'smtp').trim().toLowerCase()
   if (!['demo', 'production'].includes(mode)) throw new Error('APP_MODE must be demo or production')
   if (env.ENABLE_HOSTED_DEMO_MEMBERSHIP !== undefined && !['true', 'false'].includes(env.ENABLE_HOSTED_DEMO_MEMBERSHIP)) {

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const bcrypt = require('bcryptjs')
+const passwordPlugin = require('./passwordPlugin')
 const {
   isValidCnic,
   isValidPersonName,
@@ -31,15 +31,7 @@ const memberSchema = new mongoose.Schema({
   demoKey:              { type: String, sparse: true, index: true },
 }, { timestamps: true })
 
-memberSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next()
-  this.password = await bcrypt.hash(this.password, 12)
-  next()
-})
-
-memberSchema.methods.matchPassword = function (plain) {
-  return bcrypt.compare(plain, this.password)
-}
+memberSchema.plugin(passwordPlugin)
 
 memberSchema.methods.hasActiveSubscription = function () {
   return this.subscriptionStatus === 'active'

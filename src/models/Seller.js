@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const bcrypt = require('bcryptjs')
+const passwordPlugin = require('./passwordPlugin')
 const {
   isValidCnic,
   isValidPersonName,
@@ -20,14 +20,6 @@ const sellerSchema = new mongoose.Schema({
   bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
 }, { timestamps: true })
 
-sellerSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next()
-  this.password = await bcrypt.hash(this.password, 12)
-  next()
-})
-
-sellerSchema.methods.matchPassword = function (plain) {
-  return bcrypt.compare(plain, this.password)
-}
+sellerSchema.plugin(passwordPlugin)
 
 module.exports = mongoose.model('Seller', sellerSchema)

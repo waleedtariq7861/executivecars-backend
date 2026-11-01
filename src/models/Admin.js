@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const bcrypt = require('bcryptjs')
+const passwordPlugin = require('./passwordPlugin')
 const { isValidPersonName, isValidPhone, normalizePersonName, normalizePhone } = require('../utils/inputValidation')
 
 const adminSchema = new mongoose.Schema({
@@ -11,14 +11,6 @@ const adminSchema = new mongoose.Schema({
   demoKey:  { type: String, sparse: true, index: true },
 }, { timestamps: true })
 
-adminSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next()
-  this.password = await bcrypt.hash(this.password, 12)
-  next()
-})
-
-adminSchema.methods.matchPassword = function (plain) {
-  return bcrypt.compare(plain, this.password)
-}
+adminSchema.plugin(passwordPlugin)
 
 module.exports = mongoose.model('Admin', adminSchema)
