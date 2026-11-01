@@ -20,7 +20,6 @@ const carSchema = new mongoose.Schema({
   inspectionStatus: { type: String, enum: ['not_available', 'pending', 'report_available'], default: 'not_available', index: true },
   inspectionScore: { type: Number, min: 0, max: 100 },
   images:        [{ type: String }],
-  pdfUrl:        { type: String },
   inspectionDocument: { type: privateAssetSchema },
   basePrice:     { type: Number, required: true, min: 1 },
   reservePrice:  { type: Number, min: 1 },
@@ -42,7 +41,7 @@ carSchema.pre('validate', function (next) {
   }
   if (this.inspectionDocument?.key) {
     this.inspectionStatus = 'report_available'
-  } else if (this.inspectionStatus === 'report_available' || this.pdfUrl) {
+  } else if (this.inspectionStatus === 'report_available') {
     this.inspectionStatus = 'not_available'
     this.inspectionScore = undefined
   }

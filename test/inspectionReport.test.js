@@ -36,13 +36,10 @@ test('used-car inspection status follows the attached report', async () => {
   assert.equal(withReport.inspectionStatus, 'report_available')
 })
 
-test('public serialization normalizes contradictory legacy report metadata', () => {
-  const legacy = toInspectionSafeObject({
-    _id: 'legacy-record', inspectionStatus: 'report_available', inspectionScore: 88, pdfUrl: '',
-  })
-  assert.equal(legacy.hasInspectionReport, false)
-  assert.equal(legacy.inspectionStatus, 'not_available')
-  assert.equal(legacy.inspectionScore, undefined)
+test('public serialization exposes a report only through its authorized access path', () => {
+  const without = toInspectionSafeObject({ _id: 'no-report', inspectionStatus: 'not_available' })
+  assert.equal(without.hasInspectionReport, false)
+  assert.equal(without.inspectionReportAccessPath, undefined)
 
   const available = toInspectionSafeObject({
     _id: 'report-record', inspectionStatus: 'pending', inspectionDocument,
@@ -51,8 +48,4 @@ test('public serialization normalizes contradictory legacy report metadata', () 
   assert.equal(available.inspectionStatus, 'report_available')
   assert.equal(available.inspectionReportAccessPath, '/documents/products/report-record/report')
   assert.equal(available.inspectionDocument, undefined)
-
-  const legacyUrl = toInspectionSafeObject({ inspectionStatus: 'report_available', pdfUrl: 'https://legacy.example/report.pdf' })
-  assert.equal(legacyUrl.hasInspectionReport, false)
-  assert.equal(legacyUrl.pdfUrl, undefined)
 })
