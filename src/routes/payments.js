@@ -1,21 +1,20 @@
 const express = require('express')
 const router = express.Router()
-const protect    = require('../middleware/auth')
+const protect = require('../middleware/auth')
+const memberAccountOnly = require('../middleware/memberAccountOnly')
 const verifiedEmail = require('../middleware/verifiedEmail')
-const { completeDemoPayment } = require('../controllers/paymentController')
-const { demoPaymentsEnabled, membershipCapabilities } = require('../config/auctionMembership')
+const { paymentLimiter } = require('../middleware/rateLimits')
+const { plan, methods, createPayment, payPayment, listMyPayments, getPayment, getInvoice } = require('../controllers/paymentController')
 
-router.get('/capabilities', (req, res) => {
-  res.set('Cache-Control', 'no-store').json(membershipCapabilities())
-})
+// What is for sale and which methods exist: public, so the pricing page can show them before sign-in.
+router.get('/plan', plan)
+router.get('/methods', methods)
 
-// One existing simulation flow for local and explicitly enabled hosted FYP use.
-// Every mutation checks the server capability; the browser cannot enable it.
-router.post('/demo-complete', (req, res, next) => {
-  if (!demoPaymentsEnabled()) return res.status(404).json({
-    message: 'Membership activation is currently unavailable.', code: 'MEMBERSHIP_UNAVAILABLE',
-  })
-  next()
-}, protect, verifiedEmail, completeDemoPayment)
+router.use(protect, memberAccountOnly)
+router.get('/', listMyPayments)
+router.post('/', verifiedEmail, paymentLimiter, createPayment)
+router.get('/:id', getPayment)
+router.post('/:id/pay', verifiedEmail, paymentLimiter, payPayment)
+router.get('/:id/invoice', getInvoice)
 
 module.exports = router

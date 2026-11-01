@@ -165,4 +165,30 @@ const sendPasswordChangedEmail = async (to, { name, reason = 'change', at = new 
   })
 }
 
-module.exports = { sendOTPEmail, sendVerificationCodeEmail, sendBookingConfirmationEmail, sendPasswordResetEmail, sendPasswordChangedEmail }
+const sendInvoiceEmail = async (to, invoice) => {
+  const money = value => `${invoice.currency} ${Number(value).toLocaleString('en-PK')}`
+  await sendEmail({
+    to,
+    subject: `Invoice ${invoice.invoiceNumber} from Executive Cars`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #0f172a;">
+        <div style="background: #0f172a; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="color: #fff; margin: 0; font-size: 22px;">Executive <span style="color: #3b82f6;">Cars</span></h1>
+        </div>
+        <div style="background: #f8fafc; padding: 32px; border: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;">
+          <h2 style="margin-top: 0;">Payment received</h2>
+          <p style="color: #64748b; line-height: 1.6;">Hi ${escapeHtml(invoice.buyer?.name || 'there')}, thank you. Your invoice is below; you can open it any time from <em>My payments</em> in your account.</p>
+          <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr><td style="padding: 6px 0; color: #64748b;">Invoice</td><td style="text-align: right; font-weight: 700;">${escapeHtml(invoice.invoiceNumber)}</td></tr>
+            <tr><td style="padding: 6px 0; color: #64748b;">${escapeHtml(invoice.lineItems?.[0]?.description || 'Item')}</td><td style="text-align: right;">${escapeHtml(money(invoice.total))}</td></tr>
+            <tr><td style="padding: 6px 0; color: #64748b;">Paid with</td><td style="text-align: right;">${escapeHtml(invoice.payment?.methodLabel || '')}</td></tr>
+            <tr><td style="padding: 6px 0; color: #64748b;">Reference</td><td style="text-align: right;">${escapeHtml(invoice.payment?.reference || '')}</td></tr>
+          </table>
+          ${invoice.sandbox ? '<p style="color: #b45309; font-size: 13px;">This was a sandbox payment: no real money was charged.</p>' : ''}
+        </div>
+      </div>
+    `,
+  })
+}
+
+module.exports = { sendOTPEmail, sendVerificationCodeEmail, sendBookingConfirmationEmail, sendPasswordResetEmail, sendPasswordChangedEmail, sendInvoiceEmail }

@@ -9,7 +9,7 @@ const Car = require('../src/models/Car')
 const Booking = require('../src/models/Booking')
 const Bid = require('../src/models/Bid')
 const OtpChallenge = require('../src/models/OtpChallenge')
-const MembershipPayment = require('../src/models/MembershipPayment')
+const Payment = require('../src/models/Payment')
 const { demoAccounts: configuredDemoAccounts } = require('../src/config/demoAccounts')
 const { hmac } = require('../src/utils/crypto')
 const DemoSeedEntry = require('./demoSeedRegistry')
@@ -70,9 +70,18 @@ const seedDemo = async () => {
   const hamza = await syncAccount(Member, accounts.bidder, key('bidder'))
   const now = new Date()
   const day = 24 * 60 * 60 * 1000
-  await Promise.all([waleed, hamza].map(member => syncRecord(MembershipPayment, key(`membership:${member.email}`), {
-    memberId: member._id, amount: 4999, currency: 'PKR', plan: 'annual_auction_membership', paymentMode: 'demo', status: 'completed',
-  })))
+  // The two seeded members with an active membership also have the paid invoice that would explain it.
+  const paidAt = new Date(now.getTime() - 5 * day)
+  await Promise.all([waleed, hamza].map(async (member, index) => {
+    const payment = await syncRecord(Payment, key(`payment:${member.email}`), {
+      memberId: member._id, reference: `EC-PAY-DEMO000${index + 1}`, plan: 'annual_auction_membership', description: 'Annual Auction Membership (1 year)',
+      amount: 4999, currency: 'PKR', provider: 'sandbox', method: 'card', status: 'succeeded',
+      methodDetails: { brand: 'Visa', last4: '4242' }, billing: { name: member.name, email: member.email, phone: member.phone },
+      expiresAt: new Date(paidAt.getTime() + 60 * 60 * 1000), submittedAt: paidAt, paidAt,
+      invoiceNumber: `EC-INV-DEMO-00000${index + 1}`, invoiceIssuedAt: paidAt,
+    })
+    await Member.findByIdAndUpdate(member._id, { $set: { membershipPaymentId: payment._id } })
+  }))
 
   const productSpecs = [
     ['new-corolla', { make: 'Toyota', model: 'Corolla', variant: 'Altis X 1.8 CVT-i', year: 2024, km: 1800, price: 6950000, engine: '1800', fuel: 'Petrol', transmission: 'Auto', color: 'White', city: 'Islamabad', registrationCity: 'Unregistered', bodyType: 'Sedan', assemblyType: 'Local', condition: 'Excellent', verificationStatus: 'verified', inspectionStatus: 'not_available', listingType: 'new', ownerId: waleed._id, sellerEmail: waleed.email, description: 'Low-mileage showroom-condition local Corolla.' }],
@@ -130,7 +139,7 @@ const seedDemo = async () => {
 const resetDemo = async () => {
   requireDemoSeed()
   if (mongoose.connection.readyState === 0) await connectDB()
-  const models = { Bid, Car, Product, Booking, OtpChallenge, MembershipPayment, Member, Admin }
+  const models = { Bid, Car, Product, Booking, OtpChallenge, Payment, Member, Admin }
   const entries = await DemoSeedEntry.find().lean()
   const removed = {}
   // Dependent records first, accounts last.
@@ -141,7 +150,7 @@ const resetDemo = async () => {
   await DemoSeedEntry.deleteMany({})
   return {
     bids: removed.Bid, cars: removed.Car, products: removed.Product, bookings: removed.Booking, otps: removed.OtpChallenge,
-    memberships: removed.MembershipPayment, members: removed.Member, admins: removed.Admin,
+    payments: removed.Payment, members: removed.Member, admins: removed.Admin,
   }
 }
 
