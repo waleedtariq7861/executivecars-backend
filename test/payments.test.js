@@ -96,6 +96,9 @@ describe('the sandbox gateway', () => {
     assert.equal(code({ number: 'abcd efgh ijkl mnop' }), 'INVALID_CARD_NUMBER')
     assert.equal(code({ expMonth: 13 }), 'INVALID_EXPIRY')
     assert.equal(code({ expMonth: 1, expYear: new Date().getFullYear() - 1 }), 'CARD_EXPIRED')
+    // Earlier this year is expired too (not possible in January, when no earlier month exists).
+    if (new Date().getMonth() > 0) assert.equal(code({ expMonth: 1, expYear: new Date().getFullYear() }), 'CARD_EXPIRED')
+    assert.equal(code({ expMonth: new Date().getMonth() + 1, expYear: new Date().getFullYear() }), undefined, 'the current month is still valid')
     assert.equal(code({ cvc: '12' }), 'INVALID_CVC')
     assert.equal(code({ cvc: 'abc' }), 'INVALID_CVC')
     assert.equal(code({ name: ' ' }), 'INVALID_NAME')
@@ -398,6 +401,19 @@ describe('paying by bank transfer', () => {
     assert.equal((await request(app).post(`/api/admin/payments/${created.body.payment.id}/confirm`).set(admin)).status, 409)
     assert.equal((await request(app).post(`/api/admin/payments/${new mongoose.Types.ObjectId()}/confirm`).set(admin)).status, 404)
     assert.equal((await request(app).post('/api/admin/payments/not-an-id/reject').set(admin)).status, 404)
+  })
+
+  test('an administrator cannot confirm or reject a payment that is not a transfer waiting for confirmation', async () => {
+    const { auth, member } = await customer()
+    const created = await start(auth)
+    const { auth: admin } = await adminAuth()
+    for (const action of ['confirm', 'reject']) {
+      const response = await request(app).post(`/api/admin/payments/${created.body.payment.id}/${action}`).set(admin)
+      assert.equal(response.status, 409)
+      assert.equal(response.body.code, 'NOT_PENDING')
+    }
+    assert.equal((await Member.findById(member._id)).subscriptionStatus, 'inactive')
+    assert.equal((await Payment.findById(created.body.payment.id)).status, 'requires_payment')
   })
 
   test('confirming for a customer who meanwhile became a member fails the payment instead of extending anything', async () => {

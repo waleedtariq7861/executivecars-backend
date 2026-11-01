@@ -72,7 +72,7 @@ test('Resend configuration and provider errors fail without exposing the provide
 test('production Resend mode requires an API key and a sender address', () => {
   const base = {
     APP_MODE: 'production', NODE_ENV: 'production', EMAIL_DELIVERY_MODE: 'resend',
-    ENABLE_DEMO_SEED: 'false', PAYMENT_MODE: 'disabled',
+    ENABLE_DEMO_SEED: 'false',
     JWT_SECRET: 'this-is-a-long-enough-production-secret', CLIENT_URL: 'https://cars.example',
   }
   assert.throws(() => validateRuntimeConfig(base), /RESEND_API_KEY/)
