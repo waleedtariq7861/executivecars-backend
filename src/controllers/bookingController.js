@@ -3,6 +3,7 @@ const Booking = require('../models/Booking')
 const { hmac } = require('../utils/crypto')
 const OtpChallenge = require('../models/OtpChallenge')
 const { sendOTPEmail, sendBookingConfirmationEmail } = require('../utils/email')
+const { markVerified } = require('../utils/emailVerification')
 const { storedPrivateAsset } = require('../config/cloudinary')
 const { handleControllerError } = require('../utils/http')
 const { isDemoMode } = require('../config/runtime')
@@ -107,6 +108,8 @@ const verifyOTP = async (req, res) => {
 
     record.verified = true
     await record.save()
+    // The booking code was mailed to the signed-in customer's own address, so it also proves that address.
+    if (req.accountModel === 'member') await markVerified(req.user._id)
 
     res.json({ message: 'OTP verified successfully', verified: true })
   } catch (err) {

@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const protect    = require('../middleware/auth')
+const verifiedEmail = require('../middleware/verifiedEmail')
 const { completeDemoPayment } = require('../controllers/paymentController')
 const { demoPaymentsEnabled, membershipCapabilities } = require('../config/auctionMembership')
 
@@ -15,6 +16,6 @@ router.post('/demo-complete', (req, res, next) => {
     message: 'Membership activation is currently unavailable.', code: 'MEMBERSHIP_UNAVAILABLE',
   })
   next()
-}, protect, completeDemoPayment)
+}, protect, verifiedEmail, completeDemoPayment)
 
 module.exports = router
