@@ -5,6 +5,7 @@ const PasswordResetToken = require('../models/PasswordResetToken')
 const { handleControllerError } = require('../utils/http')
 const { isDemoMode } = require('../config/runtime')
 const email = require('../utils/email')
+const { sendInBackground } = require('../utils/background')
 const sessions = require('../utils/sessions')
 const loginThrottle = require('../utils/loginThrottle')
 const { consumeResetRequest } = require('../utils/resetRequests')
@@ -25,13 +26,6 @@ const findAccountByEmail = async (address) => {
     if (account) return { accountModel, account }
   }
   return null
-}
-
-// Mail must never change how long the answer takes or whether it succeeds, otherwise the response would
-// reveal which addresses have an account. Failures are logged, not reported to the caller.
-const sendInBackground = (label, send) => {
-  const report = error => console.error(`${label} email delivery failed:`, error?.message || error)
-  try { Promise.resolve(send()).catch(report) } catch (error) { report(error) }
 }
 
 const requestPasswordReset = async (req, res) => {

@@ -4,7 +4,6 @@ process.env.CLIENT_URL = 'http://127.0.0.1:5173'
 process.env.ML_API_URL = ''
 process.env.EMAIL_DELIVERY_MODE = 'development'
 process.env.ENABLE_DEMO_SEED = 'true'
-process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
 const { DEFAULT_TEST_URI, validateTestUri, connectTestDatabase, dropTestDatabase, resetTestDatabase } = require('./helpers/localDatabase')
 process.env.MONGO_URI = validateTestUri(process.env.TEST_MONGO_URI || DEFAULT_TEST_URI)
 for (const key of ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'GROQ_API_KEY', 'ML_SERVICE_KEY', 'RESEND_API_KEY']) process.env[key] = ''
@@ -291,9 +290,12 @@ describe('what an unverified customer cannot do', () => {
     const bid = await request(app).post('/api/bids').set(auth).send({ carId, amount: 5000000 })
     assert.equal(bid.status, 403)
     assert.equal(bid.body.code, 'EMAIL_NOT_VERIFIED')
-    const payment = await request(app).post('/api/payments/demo-complete').set(auth)
+    const payment = await request(app).post('/api/payments').set(auth)
     assert.equal(payment.status, 403)
     assert.equal(payment.body.code, 'EMAIL_NOT_VERIFIED')
+    const pay = await request(app).post(`/api/payments/${new mongoose.Types.ObjectId()}/pay`).set(auth).send({ method: 'card' })
+    assert.equal(pay.status, 403)
+    assert.equal(pay.body.code, 'EMAIL_NOT_VERIFIED')
   })
 
   test('can still use the rest of the account', async () => {
@@ -307,7 +309,7 @@ describe('what an unverified customer cannot do', () => {
     const bid = await request(app).post('/api/bids').set(auth).send({ carId, amount: 5000000 })
     assert.notEqual(bid.body.code, 'EMAIL_NOT_VERIFIED')
     assert.equal(bid.body.message, 'Active membership required', 'the next check (membership) is now the one that answers')
-    const payment = await request(app).post('/api/payments/demo-complete').set(auth)
+    const payment = await request(app).post('/api/payments').set(auth)
     assert.equal(payment.status, 201)
   })
 

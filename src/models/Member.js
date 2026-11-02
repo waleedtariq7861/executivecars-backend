@@ -27,7 +27,8 @@ const memberSchema = new mongoose.Schema({
   subscriptionStartedAt:{ type: Date },
   subscriptionExpiry:   { type: Date },
   subscriptionUpdatedAt:{ type: Date },
-  membershipSource:     { type: String, enum: ['demo'], default: undefined },
+  membershipSource:     { type: String, enum: ['payment'], default: undefined },
+  membershipPaymentId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
   checkoutSessionId:    { type: String },
   savedCars:            [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
 }, { timestamps: true })
