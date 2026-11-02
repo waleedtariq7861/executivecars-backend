@@ -44,8 +44,6 @@ Memory: the loaded model needs about 1.2 GB, and about 2.3 GB while loading. Siz
    | Variable | Value |
    |---|---|
    | `NODE_ENV` | `production` |
-   | `APP_MODE` | `production` |
-   | `ENABLE_DEMO_SEED` | `false` |
    | `REQUIRE_CLOUDINARY` | `true` |
    | `EMAIL_DELIVERY_MODE` | `resend` |
    | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | from step 1 |
@@ -56,6 +54,7 @@ Memory: the loaded model needs about 1.2 GB, and about 2.3 GB while loading. Siz
    | `ML_SERVICE_URL` | `http://<ml-service-name>.railway.internal:8000` |
    | `ML_SERVICE_KEY` | the same value as on the valuation service |
    | `TRUST_PROXY_HOPS` | `2` (Vercel in front of Railway); see step 6 |
+   | `GROQ_API_KEY` | optional: the chat assistant is unavailable without it |
 
    The API checks these at startup and refuses to run with a placeholder secret, a non-HTTPS client origin, demo mode, and similar mistakes.
 3. Generate a public domain for the API (`https://<name>.up.railway.app`). `https://<that-domain>/api/health` must answer `status: ok` and `database: connected`.
@@ -64,12 +63,35 @@ Memory: the loaded model needs about 1.2 GB, and about 2.3 GB while loading. Siz
 
 1. Import `executivecars-frontend` into Vercel (framework Vite, build `npm run build`, output `dist`; the repository root is the project root).
 2. In the frontend's `vercel.json` the three rewrites (`/api`, `/socket.io`, `/uploads`) must point at the Railway API's public domain. Commit that change before deploying. Leave `VITE_API_URL` and `VITE_SOCKET_URL` unset so the browser stays on the Vercel origin, which keeps the HttpOnly session cookie first-party.
-3. Set `VITE_APP_MODE=production` and leave `VITE_ENABLE_DEMO_ACCOUNTS` unset.
+3. No variable is required. Optional public contact details: `VITE_BUSINESS_CITY`, `VITE_BUSINESS_ADDRESS`, `VITE_CONTACT_PHONE`, `VITE_CONTACT_PHONE_LABEL`, `VITE_CONTACT_EMAIL`.
 4. Copy the production Vercel origin into `CLIENT_URL` on the API if it differs, and redeploy the API.
 
 ## 5. First administrator
 
 On your own computer, allow your IP in Atlas, put the production `MONGO_URI` in the ignored `.env` of this repository together with `BOOTSTRAP_ADMIN_CONFIRM=create-first-admin`, `BOOTSTRAP_ADMIN_NAME`, `BOOTSTRAP_ADMIN_EMAIL` and a unique `BOOTSTRAP_ADMIN_PASSWORD` (12 or more characters), then run `npm run bootstrap:admin`. It refuses to run if an administrator already exists. Remove the four `BOOTSTRAP_*` lines afterwards.
+
+## 5b. Optional: the platform's sample catalogue
+
+`scripts/seedCatalog.js` fills an **empty** database with the platform's own sample catalogue: four used cars and two car auctions (one running, one upcoming), with photos already hosted on Cloudinary (credits in the descriptions) and a **sample inspection report** (PDF) for each. It creates no accounts, bids, bookings or payments, and no listing has an owner or seller e-mail: everything belongs to the platform. It refuses to run if any used car or auction already exists, so it never overwrites or duplicates listings.
+
+The reports are generated, not real: every page says *"SAMPLE REPORT FOR DEMONSTRATION. This vehicle was not physically inspected"*, the findings only follow the condition stated in the listing, and no inspection score is stored. They are stored exactly like a report an administrator uploads (private Cloudinary storage, opened only through the authorised document routes: signed-in members for used cars, active auction members for auctions). The script refuses to store reports on a local disk when `NODE_ENV=production`. The PDF library (`pdfkit`) is a development dependency, so run the script from a checkout of this repository after `npm ci`.
+
+Run it from your own computer; `railway run` supplies the production variables (including `MONGO_URI` and the Cloudinary credentials) without you handling them. First a dry run, which writes nothing, and prints the target database name (check that it is `executivecars`), where reports would be stored, and the listings:
+
+```powershell
+cd <path-to>\executivecars-backend
+railway run -p <project-id> -e production -s executivecars-backend node scripts/seedCatalog.js
+```
+
+Then, to write it:
+
+```powershell
+$env:CONFIRM_CATALOG_SEED = "seed-platform-catalog"
+railway run -p <project-id> -e production -s executivecars-backend node scripts/seedCatalog.js --execute
+Remove-Item Env:CONFIRM_CATALOG_SEED
+```
+
+The auction dates follow the day it is run (the running auction has two weeks left). To start over, delete the listings in the admin area (deleting a listing also removes its report) and run it again. The photos and reports are samples, not the exact cars, which the descriptions and the reports say.
 
 ## 6. Verify
 

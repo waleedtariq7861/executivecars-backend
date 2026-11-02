@@ -11,6 +11,7 @@
     "dev": "nodemon server/index.js",
     "seed:demo": "node scripts/seedDemo.js",
     "seed:demo:reset": "node scripts/seedDemo.js --reset",
+    "seed:catalog": "node scripts/seedCatalog.js",
     "bootstrap:admin": "node scripts/bootstrapAdmin.js",
     "check": "node scripts/checkSyntax.js",
     "test": "node --test --test-concurrency=1 test/*.test.js"
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.4",
+    "pdfkit": "0.20.2",
     "supertest": "^7.1.4"
   }
 }

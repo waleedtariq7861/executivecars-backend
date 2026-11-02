@@ -1,0 +1,147 @@
+{
+  "description": "Platform-owned sample catalogue: used cars and auctions from the earlier reviewed FYP seed (2026-10-05). Photos are already hosted on Cloudinary. No owner, bids or accounts.",
+  "products": [
+    {
+      "key": "used-swift",
+      "fuel": "Petrol",
+      "transmission": "Auto",
+      "assemblyType": "Local",
+      "condition": "Good",
+      "make": "Suzuki",
+      "model": "Swift",
+      "variant": "GL CVT",
+      "year": 2022,
+      "km": 47000,
+      "price": 3650000,
+      "engine": "1200",
+      "color": "Red",
+      "city": "Rawalpindi",
+      "registrationCity": "Islamabad",
+      "bodyType": "Hatchback",
+      "description": "Synthetic FYP demo listing. Representative sample photograph; regional trim and photographed year may differ from the simulated specifications. 2022 Philippine GL 1.2, matching body generation; not an exact Pakistani GL CVT listing photo. Photo: Suzuki Swift 1.2 GL 2022.jpg; Ethan Llamas; CC BY-SA 4.0. Source: https://commons.wikimedia.org/wiki/File:Suzuki_Swift_1.2_GL_2022.jpg License: https://creativecommons.org/licenses/by-sa/4.0/ Original image unmodified. No inspection report is attached.",
+      "images": [
+        "https://res.cloudinary.com/dbdqhbsxu/image/upload/v1791202315/executive-cars/fyp-demo-20261005/used-swift.jpg"
+      ]
+    },
+    {
+      "key": "used-city",
+      "fuel": "Petrol",
+      "transmission": "Auto",
+      "assemblyType": "Local",
+      "condition": "Excellent",
+      "make": "Honda",
+      "model": "City",
+      "variant": "Aspire 1.5 CVT",
+      "year": 2022,
+      "km": 32000,
+      "price": 5150000,
+      "engine": "1500",
+      "color": "Silver",
+      "city": "Lahore",
+      "registrationCity": "Punjab",
+      "bodyType": "Sedan",
+      "description": "Synthetic FYP demo listing. Representative sample photograph; regional trim and photographed year may differ from the simulated specifications. GM6 body generation; Australian VTi, not exact Pakistani Aspire trim. Photo: 2014 Honda City (GM6 MY14) VTi sedan (2015-07-15) 01.jpg; OSX; Public domain. Source: https://commons.wikimedia.org/wiki/File:2014_Honda_City_(GM6_MY14)_VTi_sedan_(2015-07-15)_01.jpg Original image unmodified. No inspection report is attached.",
+      "images": [
+        "https://res.cloudinary.com/dbdqhbsxu/image/upload/v1791201841/executive-cars/fyp-demo-20261005/used-city.jpg"
+      ]
+    },
+    {
+      "key": "used-sportage",
+      "fuel": "Petrol",
+      "transmission": "Auto",
+      "assemblyType": "Local",
+      "condition": "Excellent",
+      "make": "Kia",
+      "model": "Sportage",
+      "variant": "Alpha",
+      "year": 2022,
+      "km": 28000,
+      "price": 7350000,
+      "engine": "2000",
+      "color": "Blue",
+      "city": "Karachi",
+      "registrationCity": "Sindh",
+      "bodyType": "SUV",
+      "description": "Synthetic FYP demo listing. Representative sample photograph; regional trim and photographed year may differ from the simulated specifications. QL body generation; Canadian LX AWD, not exact Pakistani Alpha trim. Photo: 2017 Kia Sportage LX AWD in Pacific Blue, Front Right, 05-10-2022.jpg; Elise240SX; CC BY-SA 4.0. Source: https://commons.wikimedia.org/wiki/File:2017_Kia_Sportage_LX_AWD_in_Pacific_Blue,_Front_Right,_05-10-2022.jpg License: https://creativecommons.org/licenses/by-sa/4.0/ Original image unmodified. No inspection report is attached.",
+      "images": [
+        "https://res.cloudinary.com/dbdqhbsxu/image/upload/v1791201742/executive-cars/fyp-demo-20261005/used-sportage.jpg"
+      ]
+    },
+    {
+      "key": "used-yaris",
+      "fuel": "Petrol",
+      "transmission": "Auto",
+      "assemblyType": "Local",
+      "condition": "Excellent",
+      "make": "Toyota",
+      "model": "Yaris",
+      "variant": "ATIV X CVT 1.5",
+      "year": 2023,
+      "km": 16500,
+      "price": 4900000,
+      "engine": "1500",
+      "color": "White",
+      "city": "Islamabad",
+      "registrationCity": "Islamabad",
+      "bodyType": "Sedan",
+      "description": "Synthetic FYP demo listing. Representative sample photograph; regional trim and photographed year may differ from the simulated specifications. XP150 ATIV body generation; Thai 1.2 G, not exact Pakistani 1.5 variant. Photo: 2017 Toyota Yaris ATIV 1.2 G Front.jpg; M.rJirapat; CC BY-SA 4.0. Source: https://commons.wikimedia.org/wiki/File:2017_Toyota_Yaris_ATIV_1.2_G_Front.jpg License: https://creativecommons.org/licenses/by-sa/4.0/ Original image unmodified. No inspection report is attached.",
+      "images": [
+        "https://res.cloudinary.com/dbdqhbsxu/image/upload/v1791201876/executive-cars/fyp-demo-20261005/used-yaris.jpg"
+      ]
+    }
+  ],
+  "auctions": [
+    {
+      "key": "live-civic",
+      "startsInDays": -1,
+      "endsInDays": 15,
+      "fuel": "Petrol",
+      "transmission": "Auto",
+      "assemblyType": "Local",
+      "condition": "Good",
+      "make": "Honda",
+      "model": "Civic",
+      "variant": "Oriel 1.8 i-VTEC CVT",
+      "year": 2020,
+      "km": 61000,
+      "engine": "1800",
+      "color": "Red",
+      "city": "Islamabad",
+      "registrationCity": "Islamabad",
+      "bodyType": "Sedan",
+      "basePrice": 4550000,
+      "reservePrice": 4800000,
+      "minimumBidIncrement": 50000,
+      "description": "Synthetic FYP demo listing. Representative sample photograph; regional trim and photographed year may differ from the simulated specifications. FC generation; Malaysian 2019 1.8 S, not exact Pakistani 2020 Oriel trim. Photo: 2019 Honda Civic 1.8 S (1).jpg; Bindydad123; CC BY-SA 4.0. Source: https://commons.wikimedia.org/wiki/File:2019_Honda_Civic_1.8_S_(1).jpg License: https://creativecommons.org/licenses/by-sa/4.0/ Original image unmodified. No inspection report is attached.",
+      "images": [
+        "https://res.cloudinary.com/dbdqhbsxu/image/upload/v1791202161/executive-cars/fyp-demo-20261005/live-civic.jpg"
+      ]
+    },
+    {
+      "key": "upcoming-fortuner",
+      "startsInDays": 2,
+      "endsInDays": 9,
+      "fuel": "Diesel",
+      "transmission": "Auto",
+      "assemblyType": "Local",
+      "condition": "Excellent",
+      "make": "Toyota",
+      "model": "Fortuner",
+      "variant": "Sigma 4 2.8",
+      "year": 2021,
+      "km": 52000,
+      "engine": "2800",
+      "color": "White",
+      "city": "Lahore",
+      "registrationCity": "Punjab",
+      "bodyType": "SUV",
+      "basePrice": 14500000,
+      "reservePrice": 15300000,
+      "minimumBidIncrement": 100000,
+      "description": "Synthetic FYP demo listing. Representative sample photograph; regional trim and photographed year may differ from the simulated specifications. 2021 facelift body; Indonesian SRZ 2.7 4x2, not the Pakistani Sigma 4 2.8 trim. Photo: 2021 Toyota Fortuner SRZ 2.7 4x2 (Indonesia) front view 01.jpg; Andra Febrian; CC BY-SA 4.0. Source: https://commons.wikimedia.org/wiki/File:2021_Toyota_Fortuner_SRZ_2.7_4x2_(Indonesia)_front_view_01.jpg License: https://creativecommons.org/licenses/by-sa/4.0/ Original image unmodified. No inspection report is attached.",
+      "images": [
+        "https://res.cloudinary.com/dbdqhbsxu/image/upload/v1791202242/executive-cars/fyp-demo-20261005/upcoming-fortuner.jpg"
+      ]
+    }
+  ]
+}
