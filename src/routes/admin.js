@@ -11,6 +11,7 @@ const {
   createProduct, getAdminProducts, updateProduct, deleteProduct,
 } = require('../controllers/adminController')
 const { listPayments, confirmPayment, rejectPayment } = require('../controllers/paymentAdminController')
+const { listAuthEvents } = require('../controllers/authEventAdminController')
 const datasetUpload = require('../middleware/datasetUpload')
 const { importDataset, getDatasetImports, getDatasetSummary, exportTrainingRecords } = require('../controllers/datasetController')
 const { predictionServiceHealth, getModelVersions, trainModel, activateModelVersion, rollbackModelVersion } = require('../controllers/modelController')
@@ -22,6 +23,8 @@ router.get('/stats', getStats)
 router.get('/bookings',           getBookings)
 router.patch('/bookings/:id',     updateBookingStatus)
 router.delete('/bookings/:id',    deleteBooking)
+
+router.get('/auth-events',            listAuthEvents)
 
 router.get('/payments',               listPayments)
 router.post('/payments/:id/confirm',  confirmPayment)

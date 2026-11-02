@@ -1,4 +1,5 @@
 const email = require('../utils/email')
+const { recordAuthEvent } = require('../utils/authEvents')
 const { handleControllerError } = require('../utils/http')
 const { isDemoMode } = require('../config/runtime')
 const { issueCode, cancelCode, checkCode, CODE_LIFETIME_MS, MAX_ATTEMPTS } = require('../utils/emailVerification')
@@ -26,6 +27,7 @@ const sendVerificationCode = async (member) => {
     // The mail never left, so the attempt must not use up the person's allowance of new codes.
     await cancelCode(member)
     console.error('Verification email delivery failed:', error.message)
+    await recordAuthEvent('mail_failed', { accountModel: 'member', accountId: member._id, email: member.email, detail: 'verification code' })
     return { sent: false, failed: true }
   }
 }
@@ -81,6 +83,7 @@ const verifyCode = async (req, res) => {
         ...(result.remainingAttempts !== undefined ? { remainingAttempts: result.remainingAttempts } : {}),
       })
     }
+    await recordAuthEvent('email_verified', { req, accountModel: 'member', accountId: req.user._id, email: req.user.email })
     res.json({ verified: true })
   } catch (error) {
     handleControllerError(res, error, 'Could not verify the code')

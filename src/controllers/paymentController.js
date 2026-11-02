@@ -5,6 +5,7 @@ const Payment = require('../models/Payment')
 const { nextSequence } = require('../models/Counter')
 const { handleControllerError } = require('../utils/http')
 const { sendInBackground } = require('../utils/background')
+const { recordAuthEvent } = require('../utils/authEvents')
 const email = require('../utils/email')
 const gateway = require('../services/sandboxGateway')
 const { buildInvoice, paymentDto, invoiceNumberFor } = require('../utils/invoice')
@@ -65,7 +66,11 @@ const failPayment = (paymentId, { code, message, details }) => Payment.findByIdA
   { new: true },
 )
 
-const sendInvoice = (settled, coverage) => sendInBackground('Invoice', () => email.sendInvoiceEmail(settled.billing.email, buildInvoice(settled, coverage)))
+const sendInvoice = (settled, coverage) => sendInBackground(
+  'Invoice',
+  () => email.sendInvoiceEmail(settled.billing.email, buildInvoice(settled, coverage)),
+  () => recordAuthEvent('mail_failed', { accountModel: 'member', accountId: settled.memberId, email: settled.billing.email, detail: 'invoice' }),
+)
 
 const plan = (req, res) => {
   res.set('Cache-Control', 'no-store').json({ ...membershipPlan(), provider: 'sandbox' })
