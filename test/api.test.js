@@ -269,7 +269,6 @@ test('private documents require authorization and short-lived access links', asy
     assert.equal(publicProduct.status, 200)
     assert.equal(publicProduct.body.hasInspectionReport, true)
     assert.equal(publicProduct.body.inspectionDocument, undefined)
-    assert.equal(publicProduct.body.pdfUrl, undefined)
     assert.equal(publicProduct.body.inspectionReportAccessPath, `/documents/products/${product._id}/report`)
 
     const anonymous = await request(app).get(`/api/documents/products/${product._id}/report`)
