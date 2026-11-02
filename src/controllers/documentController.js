@@ -17,11 +17,8 @@ const validId = (req, res) => {
   return false
 }
 
-const ownsRecord = (req, record, ownerField = 'ownerId') => {
-  const ownerId = record?.[ownerField]
-  if (ownerId && String(ownerId) === String(req.user?._id)) return true
-  return Boolean(record?.sellerEmail && record.sellerEmail === req.user?.email)
-}
+// Ownership is the account the listing is assigned to. An e-mail address is not proof of ownership.
+const ownsRecord = (req, record) => Boolean(record?.ownerId && String(record.ownerId) === String(req.user?._id))
 
 const signLocalAccess = asset => {
   const payload = Buffer.from(JSON.stringify({

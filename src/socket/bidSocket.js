@@ -1,9 +1,15 @@
-const mongoose = require('mongoose')
 const Member = require('../models/Member')
 const { sessionTokenFromRequest } = require('../utils/session')
 const sessions = require('../utils/sessions')
+const { allowedOrigins } = require('../config/origins')
 
 const MEMBERSHIP_RECHECK_MS = 60_000
+// A member watches a handful of auctions at once. Each join also costs database lookups, so both the number of rooms
+// and the rate of join requests on one connection are limited.
+const MAX_AUCTION_ROOMS = 20
+const JOIN_WINDOW_MS = 10_000
+const MAX_JOINS_PER_WINDOW = 20
+const OBJECT_ID = /^[a-f0-9]{24}$/i
 
 const activeMember = async id => {
   const member = await Member.findById(id).select('subscriptionStatus subscriptionExpiry')
@@ -12,7 +18,12 @@ const activeMember = async id => {
 
 const initSocket = (io) => {
   io.use(async (socket, next) => {
-    const token = sessionTokenFromRequest({ headers: socket.handshake.headers }) || socket.handshake.auth?.token
+    // Browsers always say where a WebSocket comes from; a page on another site must not open one with this visitor's cookie.
+    const origin = String(socket.handshake.headers?.origin || '').replace(/\/$/, '')
+    if (origin && !allowedOrigins.includes(origin)) return next(new Error('Origin not allowed'))
+
+    // The session lives in the HttpOnly cookie only; a token supplied by page script is never accepted.
+    const token = sessionTokenFromRequest({ headers: socket.handshake.headers })
     if (!token) return next(new Error('Authentication required'))
 
     try {
@@ -54,8 +65,19 @@ const initSocket = (io) => {
     recheckTimer.unref?.()
     socket.on('disconnect', () => clearInterval(recheckTimer))
 
+    let windowStartedAt = Date.now()
+    let joinsInWindow = 0
+    const withinJoinRate = () => {
+      const now = Date.now()
+      if (now - windowStartedAt > JOIN_WINDOW_MS) { windowStartedAt = now; joinsInWindow = 0 }
+      joinsInWindow += 1
+      return joinsInWindow <= MAX_JOINS_PER_WINDOW
+    }
+
     socket.on('join-auction', async (carId) => {
-      if (!mongoose.isValidObjectId(carId)) return
+      if (typeof carId !== 'string' || !OBJECT_ID.test(carId)) return
+      if (!withinJoinRate()) return
+      if (!desiredAuctions.has(carId) && desiredAuctions.size >= MAX_AUCTION_ROOMS) return
       desiredAuctions.add(carId)
       if (await recheckAccess() && !socket.disconnected && desiredAuctions.has(carId)) {
         socket.join(carId)
@@ -63,7 +85,7 @@ const initSocket = (io) => {
     })
 
     socket.on('leave-auction', (carId) => {
-      if (!mongoose.isValidObjectId(carId)) return
+      if (typeof carId !== 'string' || !OBJECT_ID.test(carId)) return
       desiredAuctions.delete(carId)
       socket.leave(carId)
     })

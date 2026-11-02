@@ -10,6 +10,11 @@ module.exports = function passwordPlugin(schema) {
 
   schema.add({ passwordChangedAt: { type: Date } })
 
+  // Whatever query produced the document and whatever code serializes it, the stored hash is never part of the output.
+  const withoutPassword = (doc, ret) => { delete ret.password; return ret }
+  schema.set('toJSON', { transform: withoutPassword })
+  schema.set('toObject', { transform: withoutPassword })
+
   schema.methods.matchPassword = function matchPassword(plain) {
     return verifyPassword(plain, this.password)
   }

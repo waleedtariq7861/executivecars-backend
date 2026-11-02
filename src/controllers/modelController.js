@@ -2,6 +2,15 @@ const axios = require('axios')
 const VehicleRecord = require('../models/VehicleRecord')
 const { handleControllerError } = require('../utils/http')
 
+// What the administrator is told when the model service fails. The service's own `detail` text (written by us) is
+// passed on for a refusal it deliberately explains; a network error message names internal hosts and is never shown.
+const failure = (error, { statuses, unavailable }) => {
+  const status = statuses[error.response?.status] ?? 503
+  const detail = error.response?.data?.detail
+  const explained = typeof detail === 'string' && status < 500
+  return Object.assign(new Error(explained ? detail : unavailable), { status })
+}
+
 const serviceBase = () => String(process.env.ML_SERVICE_URL || process.env.ML_API_URL || 'http://127.0.0.1:8000/predict').replace(/\/predict\/?$/, '').replace(/\/$/, '')
 const serviceConfig = (timeout = 5000) => ({ timeout, headers: process.env.ML_SERVICE_KEY ? { 'X-Service-Key': process.env.ML_SERVICE_KEY } : undefined })
 
@@ -19,8 +28,7 @@ const getModelVersions = async (req, res) => {
     const { data } = await axios.get(`${serviceBase()}/models`, serviceConfig())
     res.json(data)
   } catch (error) {
-    error.status = error.response?.status === 401 ? 502 : 503
-    handleControllerError(res, error, 'Could not load model versions')
+    handleControllerError(res, failure(error, { statuses: { 401: 502 }, unavailable: 'Could not load model versions' }), 'Could not load model versions')
   }
 }
 
@@ -39,10 +47,7 @@ const trainModel = async (req, res) => {
     const { data } = await axios.post(`${serviceBase()}/train`, { records, provenance }, serviceConfig(10 * 60 * 1000))
     res.status(201).json(data)
   } catch (error) {
-    const message = error.response?.data?.detail || error.message
-    error.message = message
-    error.status = error.response?.status === 400 ? 400 : 503
-    handleControllerError(res, error, 'Model training service is unavailable')
+    handleControllerError(res, failure(error, { statuses: { 400: 400 }, unavailable: 'Model training service is unavailable' }), 'Model training service is unavailable')
   }
 }
 
@@ -51,9 +56,7 @@ const activateModelVersion = async (req, res) => {
     const { data } = await axios.post(`${serviceBase()}/models/${encodeURIComponent(req.params.version)}/activate`, {}, serviceConfig())
     res.json(data)
   } catch (error) {
-    error.message = error.response?.data?.detail || error.message
-    error.status = error.response?.status === 404 ? 404 : 503
-    handleControllerError(res, error, 'Could not activate model version')
+    handleControllerError(res, failure(error, { statuses: { 404: 404 }, unavailable: 'Could not activate model version' }), 'Could not activate model version')
   }
 }
 
@@ -62,9 +65,7 @@ const rollbackModelVersion = async (req, res) => {
     const { data } = await axios.post(`${serviceBase()}/models/rollback`, {}, serviceConfig())
     res.json(data)
   } catch (error) {
-    error.message = error.response?.data?.detail || error.message
-    error.status = error.response?.status === 409 ? 409 : 503
-    handleControllerError(res, error, 'Could not roll back model version')
+    handleControllerError(res, failure(error, { statuses: { 409: 409 }, unavailable: 'Could not roll back model version' }), 'Could not roll back model version')
   }
 }
 

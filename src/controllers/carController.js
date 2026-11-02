@@ -1,43 +1,16 @@
 const Car = require('../models/Car')
-const { escapeRegex, handleControllerError } = require('../utils/http')
-const { toInspectionSafeObject } = require('../utils/inspectionReport')
+const { escapeRegex, handleControllerError, oneOf, queryText } = require('../utils/http')
+const { toMemberAuctionObject } = require('../utils/publicDto')
 
-const MEMBER_AUCTION_FIELDS = [
-  '_id', 'make', 'model', 'variant', 'year', 'km', 'engine', 'fuel',
-  'transmission', 'color', 'city', 'registrationCity', 'bodyType',
-  'assemblyType', 'condition', 'verificationStatus', 'inspectionStatus',
-  'inspectionScore', 'hasInspectionReport', 'inspectionReportAccessPath', 'images', 'basePrice',
-  'reservePrice', 'minimumBidIncrement', 'currentBid', 'bidCount',
-  'auctionStart', 'auctionEnd', 'description', 'status', 'createdAt', 'updatedAt',
-]
-
-const maskBidderName = name => {
-  const normalized = String(name || '').trim()
-  return normalized ? `${normalized.slice(0, 2)}***` : 'Bidder'
-}
-
-const toMemberAuctionObject = (car, memberId) => {
-  const source = toInspectionSafeObject(car, { reportPath: `/documents/auctions/${car._id}/report` })
-  const safe = Object.fromEntries(
-    MEMBER_AUCTION_FIELDS
-      .filter(field => source[field] !== undefined)
-      .map(field => [field, source[field]])
-  )
-  const bidder = source.highestBidder
-  const bidderId = bidder?._id || bidder
-  if (bidderId) {
-    const isCurrentMember = String(bidderId) === String(memberId)
-    safe.highestBidder = {
-      ...(isCurrentMember ? { _id: bidderId } : {}),
-      name: isCurrentMember ? 'You' : maskBidderName(bidder?.name),
-    }
-  }
-  return safe
-}
+const CAR_STATUSES = ['active', 'ended', 'cancelled']
 
 const getCars = async (req, res) => {
   try {
-    const { make, status = 'active', search, phase = 'live' } = req.query
+    // An empty status means "any status" (the ended list asks for that); a missing one means active auctions.
+    const status = req.query.status === undefined ? 'active' : oneOf(req.query.status, CAR_STATUSES, 'status')
+    const make = queryText(req.query.make, 'make')
+    const search = queryText(req.query.search, 'search')
+    const phase = queryText(req.query.phase, 'phase') || 'live'
     const filter = {}
     if (status) filter.status = status
     if (phase === 'live' && status === 'active') {

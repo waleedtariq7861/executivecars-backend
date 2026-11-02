@@ -3,7 +3,7 @@ require('dotenv').config()
 const mongoose = require('mongoose')
 const connectDB = require('../src/config/db')
 const Admin = require('../src/models/Admin')
-const { isValidPersonName, normalizePersonName } = require('../src/utils/inputValidation')
+const { isValidEmail, isValidPersonName, normalizePersonName } = require('../src/utils/inputValidation')
 
 const bootstrapInput = (env = process.env) => {
   const name = normalizePersonName(env.BOOTSTRAP_ADMIN_NAME)
@@ -13,7 +13,7 @@ const bootstrapInput = (env = process.env) => {
     throw new Error('Set BOOTSTRAP_ADMIN_CONFIRM=create-first-admin for the one-time setup')
   }
   if (!isValidPersonName(name)) throw new Error('BOOTSTRAP_ADMIN_NAME must be a valid full name')
-  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error('BOOTSTRAP_ADMIN_EMAIL must be a valid email address')
+  if (!isValidEmail(email)) throw new Error('BOOTSTRAP_ADMIN_EMAIL must be a valid email address')
   if (password.length < 12) throw new Error('BOOTSTRAP_ADMIN_PASSWORD must contain at least 12 characters')
   return { name, email, password }
 }

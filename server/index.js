@@ -16,6 +16,8 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
     credentials: true,
   },
+  // The only messages the browser sends are auction ids; nothing larger than a few kilobytes is read.
+  maxHttpBufferSize: 10_000,
 })
 app.set('io', io)
 initSocket(io)

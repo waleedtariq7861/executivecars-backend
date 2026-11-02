@@ -6,11 +6,18 @@ const Product = require('../models/Product')
 const Bid     = require('../models/Bid')
 const VehicleRecord = require('../models/VehicleRecord')
 const { uploadedFileUrl, storedPrivateAsset, deletePrivateAsset } = require('../config/cloudinary')
-const { escapeRegex, handleControllerError, pick } = require('../utils/http')
+const sessions = require('../utils/sessions')
+const EmailVerificationCode = require('../models/EmailVerificationCode')
+const OtpChallenge = require('../models/OtpChallenge')
+const PasswordResetCode = require('../models/PasswordResetCode')
+const { escapeRegex, handleControllerError, pick, oneOf, queryText } = require('../utils/http')
 const { strictNumber } = require('../utils/inputValidation')
 const { toInspectionSafeObject } = require('../utils/inspectionReport')
 const { toBookingObject } = require('../utils/bookingDto')
 const { hasMetReserve } = require('../utils/auctionOutcome')
+const { emitAuctionEnded } = require('../utils/auctionEvents')
+
+const BOOKING_STATUSES = ['pending', 'approved', 'rejected', 'confirmed', 'completed', 'cancelled']
 
 const toAdminAuctionObject = car => toInspectionSafeObject(car, { reportPath: `/documents/auctions/${car._id}/report` })
 const toAdminProductObject = product => toInspectionSafeObject(product, { reportPath: `/documents/products/${product._id}/report` })
@@ -100,7 +107,8 @@ const getStats = async (req, res) => {
 // ── Bookings ─────────────────────────────────────────────────────────────────
 const getBookings = async (req, res) => {
   try {
-    const { status, search } = req.query
+    const status = oneOf(req.query.status, BOOKING_STATUSES, 'status')
+    const search = queryText(req.query.search, 'search')
     const filter = {}
     if (status) filter.status = status
     if (search) {
@@ -118,26 +126,53 @@ const getBookings = async (req, res) => {
   }
 }
 
+// Approval lets a customer sell. When the booking that granted it is rejected, cancelled or deleted, the approval goes
+// with it, unless another approved booking of the same customer still stands behind it.
+const withdrawSellerApproval = async (booking) => {
+  if (!booking.memberId) return
+  const account = await Member.findById(booking.memberId)
+  if (account && String(account.sellerBookingId) === String(booking._id)) {
+    const standing = await Booking.findOne({
+      memberId: booking.memberId, _id: { $ne: booking._id }, sellerCreated: true, status: { $in: ['approved', 'confirmed', 'completed'] },
+    })
+    if (standing) {
+      account.sellerBookingId = standing._id
+    } else {
+      account.sellerApproved = false
+      account.sellerBookingId = undefined
+    }
+    await account.save()
+  }
+}
+
+const FINAL_BOOKING_STATUSES = ['completed', 'cancelled']
+
 const updateBookingStatus = async (req, res) => {
   try {
     const { status } = req.body
-    if (!['approved', 'rejected', 'confirmed', 'completed', 'cancelled'].includes(status)) {
+    if (!BOOKING_STATUSES.filter(item => item !== 'pending').includes(status)) {
       return res.status(400).json({ message: 'Status must be approved, rejected, confirmed, completed, or cancelled' })
     }
 
     const booking = await Booking.findById(req.params.id)
     if (!booking) return res.status(404).json({ message: 'Booking not found' })
+    if (FINAL_BOOKING_STATUSES.includes(booking.status) && booking.status !== status) {
+      return res.status(409).json({ message: `A ${booking.status} booking can no longer be changed.`, code: 'BOOKING_CLOSED' })
+    }
+
+    // Approval is granted to the account that made the booking, found by its id (never by an e-mail address).
+    let account = null
+    if (status === 'approved' && !booking.sellerCreated) {
+      account = booking.memberId ? await Member.findById(booking.memberId) : null
+      if (!account) {
+        return res.status(409).json({ message: 'The booking owner account no longer exists and cannot be approved.' })
+      }
+    }
 
     booking.status = status
     await booking.save()
 
-    // Bookings can only be created by an authenticated member, so approval never
-    // needs to create or disclose a separate seller password.
-    if (status === 'approved' && !booking.sellerCreated) {
-      const account = await Member.findOne({ email: booking.email })
-      if (!account) {
-        return res.status(409).json({ message: 'The booking owner account no longer exists and cannot be approved.' })
-      }
+    if (account) {
       account.sellerApproved = true
       account.sellerBookingId = booking._id
       account.phone = account.phone || booking.phone
@@ -145,6 +180,10 @@ const updateBookingStatus = async (req, res) => {
       await account.save()
       booking.sellerCreated = true
       await booking.save()
+    } else if (['rejected', 'cancelled'].includes(status) && booking.sellerCreated) {
+      booking.sellerCreated = false
+      await booking.save()
+      await withdrawSellerApproval(booking)
     }
 
     res.json({ message: `Booking ${status}`, booking: toBookingObject(booking) })
@@ -157,6 +196,7 @@ const deleteBooking = async (req, res) => {
   try {
     const booking = await Booking.findByIdAndDelete(req.params.id)
     if (!booking) return res.status(404).json({ message: 'Booking not found' })
+    if (booking.sellerCreated) await withdrawSellerApproval(booking)
     await Promise.all([deletePrivateAsset(booking.cnicDocument), deletePrivateAsset(booking.registrationDocument)])
     res.json({ message: 'Booking deleted' })
   } catch (err) {
@@ -171,7 +211,10 @@ const getMembers = async (req, res) => {
       { subscriptionStatus: 'active', subscriptionExpiry: { $lte: new Date() } },
       { $set: { subscriptionStatus: 'expired' } }
     )
-    const { search, status, page = 1, limit = 20 } = req.query
+    const search = queryText(req.query.search, 'search')
+    const status = oneOf(req.query.status, ['active', 'inactive', 'expired'], 'status')
+    const page = queryText(req.query.page, 'page') ?? 1
+    const limit = queryText(req.query.limit, 'limit') ?? 20
     const filter = {}
     if (status) filter.subscriptionStatus = status
     if (search) {
@@ -204,6 +247,14 @@ const deleteMember = async (req, res) => {
       Car.updateMany({ ownerId: req.params.id }, { $unset: { ownerId: 1 }, $set: { sellerEmail: '' } }),
       Product.updateMany({ ownerId: req.params.id }, { $unset: { ownerId: 1 }, $set: { sellerEmail: '' } }),
     ])
+    // A deleted customer is signed out everywhere at once (their open sockets too), and nothing that could still
+    // verify their address or reset their password is left behind.
+    await sessions.revokeAccountSessions({ accountModel: 'member', accountId: member._id, reason: 'account_deleted', io: req.app.get('io') })
+    await Promise.all([
+      EmailVerificationCode.deleteMany({ accountId: member._id }),
+      PasswordResetCode.deleteMany({ accountModel: 'member', accountId: member._id }),
+      OtpChallenge.deleteMany({ email: member.email }),
+    ])
     await member.deleteOne()
     res.json({ message: 'Member deleted' })
   } catch (err) {
@@ -217,7 +268,7 @@ const createCar = async (req, res) => {
     const { make, model, variant, year, km, engine, fuel, transmission, color, city, registrationCity, bodyType, assemblyType, condition, basePrice, reservePrice, auctionStart, auctionEnd, description, ownerId } = req.body
     requireFields(req.body, ['make', 'model', 'year', 'km', 'engine', 'basePrice', 'auctionStart', 'auctionEnd'])
 
-    const images = req.files?.images?.map(file => uploadedFileUrl(req, file)) || []
+    const images = req.files?.images?.map(file => uploadedFileUrl(file)) || []
     const inspectionDocument = storedPrivateAsset(req.files?.report?.[0])
     const ownership = await resolveOwner(ownerId)
     const start = dateField('Auction start', auctionStart)
@@ -327,12 +378,7 @@ const closeAuction = async (req, res) => {
       auction.auctionEnd = closedAt
     }
     const reserveMet = hasMetReserve(auction)
-    const io = req.app.get('io')
-    io?.to(auction._id.toString()).emit('auction-ended', {
-      carId: auction._id.toString(), finalBid: auction.currentBid,
-      reserveMet,
-      winner: reserveMet && auction.highestBidder ? { _id: auction.highestBidder._id, name: auction.highestBidder.name } : null,
-    })
+    emitAuctionEnded(req.app.get('io'), auction)
     res.json({ message: 'Auction closed', auction: toAdminAuctionObject(auction), reserveMet })
   } catch (err) {
     handleControllerError(res, err, 'Could not close auction')
@@ -345,7 +391,7 @@ const createProduct = async (req, res) => {
     const { make, model, variant, year, km, price, engine, fuel, transmission, color, city, registrationCity, bodyType, assemblyType, condition, description, ownerId } = req.body
     requireFields(req.body, ['make', 'model', 'year', 'km', 'price'])
 
-    const images = req.files?.images?.map(file => uploadedFileUrl(req, file)) || []
+    const images = req.files?.images?.map(file => uploadedFileUrl(file)) || []
     const inspectionDocument = storedPrivateAsset(req.files?.report?.[0])
     const ownership = await resolveOwner(ownerId)
 

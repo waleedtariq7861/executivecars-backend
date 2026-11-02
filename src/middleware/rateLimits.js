@@ -51,6 +51,13 @@ const mfaLimiter = createLimiter({
   message: 'Too many two-step sign-in requests. Please try again in 15 minutes.',
 })
 
+// Each booking carries identity documents that are uploaded to storage, so submissions get their own flood guard.
+const bookingLimiter = createLimiter({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  message: 'Too many booking requests. Please try again later.',
+})
+
 const emailVerificationLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   limit: 30,
@@ -81,4 +88,4 @@ const chatLimiter = createLimiter({
   message: 'Too many assistant requests. Please wait a minute and try again.',
 })
 
-module.exports = { loginLimiter, adminLoginLimiter, registerLimiter, forgotPasswordLimiter, resetPasswordLimiter, emailVerificationLimiter, mfaLimiter, paymentLimiter, otpLimiter, predictionLimiter, chatLimiter }
+module.exports = { loginLimiter, adminLoginLimiter, registerLimiter, forgotPasswordLimiter, resetPasswordLimiter, emailVerificationLimiter, mfaLimiter, bookingLimiter, paymentLimiter, otpLimiter, predictionLimiter, chatLimiter }

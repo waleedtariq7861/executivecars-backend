@@ -9,6 +9,7 @@ const sessions = require('../utils/sessions')
 const loginThrottle = require('../utils/loginThrottle')
 const { consumeResetRequest } = require('../utils/resetRequests')
 const { validatePassword } = require('../utils/passwordPolicy')
+const { isValidEmail } = require('../utils/inputValidation')
 const resetCode = require('../utils/passwordResetCode')
 
 // Customers and administrators can reset. When one address exists in both collections the customer account wins.
@@ -33,7 +34,7 @@ const requestPasswordReset = async (req, res) => {
   const genericResponse = { message: 'If that email belongs to an account, a password reset code will be sent to it.' }
   try {
     const address = normalizeEmail(req.body.email)
-    if (!/^\S+@\S+\.\S+$/.test(address)) return res.status(400).json({ message: 'Enter a valid email address', errors: { email: 'Enter a valid email address' } })
+    if (!isValidEmail(address)) return res.status(400).json({ message: 'Enter a valid email address', errors: { email: 'Enter a valid email address' } })
 
     const found = await findAccountByEmail(address)
     let developmentCode
@@ -60,7 +61,7 @@ const resetPassword = async (req, res) => {
     const address = normalizeEmail(req.body.email)
     const submittedCode = String(req.body.code ?? '').replace(/\s+/g, '')
     const password = req.body.password
-    if (!/^\S+@\S+\.\S+$/.test(address)) return res.status(400).json({ message: 'Enter a valid email address', errors: { email: 'Enter a valid email address' } })
+    if (!isValidEmail(address)) return res.status(400).json({ message: 'Enter a valid email address', errors: { email: 'Enter a valid email address' } })
     if (!/^\d{6}$/.test(submittedCode)) return res.status(400).json({ message: 'Enter the 6-digit code', errors: { code: 'Enter the 6-digit code' } })
     if (typeof password !== 'string') return res.status(400).json({ message: 'Enter a new password', errors: { password: 'Enter a new password' } })
 
