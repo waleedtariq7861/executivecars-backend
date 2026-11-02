@@ -80,4 +80,4 @@ Railway (this API and the valuation service), Vercel (the frontend), MongoDB Atl
 
 - Generated uploads and private documents must live outside Git; in production they are stored in Cloudinary (`REQUIRE_CLOUDINARY=true`), because the host's disk is temporary.
 - The training dataset and the model belong to the valuation service repository.
-- `npm run seed:catalog` puts the platform's sample used cars and auctions, with sample inspection reports, into an empty database (dry run by default; see DEPLOYMENT.md, section 5b). `npm run seed:demo` is the separate local demonstration seed and refuses to run in production.
+- `npm run seed:catalog` puts the platform's sample used cars and auctions, with photographs and sample inspection reports, into an empty database (dry run by default; see DEPLOYMENT.md, section 5b). `npm run seed:demo` is the separate local demonstration seed and refuses to run in production.
