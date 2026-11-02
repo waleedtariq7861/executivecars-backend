@@ -1,7 +1,6 @@
 const axios = require('axios')
 const { randomUUID } = require('crypto')
 const Product = require('../models/Product')
-const { isDemoMode } = require('../config/runtime')
 const { escapeRegex } = require('../utils/http')
 
 const DEFAULT_MODEL = 'openai/gpt-oss-20b'
@@ -164,11 +163,7 @@ const resetChatCapabilityCache = () => { capabilityCache = null }
 
 const validateChatCapability = async ({ force = false } = {}) => {
   if (!process.env.GROQ_API_KEY) {
-    const demoFallback = isDemoMode()
-    return {
-      configured: false, providerReachable: false, modelUsable: false, demoFallback,
-      status: demoFallback ? 'available' : 'unavailable',
-    }
+    return { configured: false, providerReachable: false, modelUsable: false, status: 'unavailable' }
   }
 
   const cacheKey = `${configuredModel()}:${process.env.GROQ_API_KEY}`
@@ -187,14 +182,13 @@ const validateChatCapability = async ({ force = false } = {}) => {
       temperature: 0,
     })
     providerReply(response)
-    value = { configured: true, providerReachable: true, modelUsable: true, demoFallback: false, status: 'available', category: null }
+    value = { configured: true, providerReachable: true, modelUsable: true, status: 'available', category: null }
   } catch (err) {
     const category = errorCategory(err)
     value = {
       configured: true,
       providerReachable: !['timeout', 'network_error', 'provider_failure'].includes(category),
       modelUsable: false,
-      demoFallback: false,
       status: 'unavailable',
       category,
     }
@@ -222,20 +216,7 @@ const chat = async (req, res) => {
       .slice(-20)
 
     if (!process.env.GROQ_API_KEY) {
-      if (!isDemoMode()) {
-        return res.status(503).json({ message: 'AI assistant is not configured', code: 'not_configured', requestId })
-      }
-      const latest = history.at(-1)?.content || ''
-      if (/auction|bid|bidding/i.test(latest)) {
-        return res.json({ reply: await runGetActiveAuctions() })
-      }
-      if (/car|buy|available|inventory|price/i.test(latest)) {
-        const inventory = await runSearchUsedCars({ limit: 5 })
-        return res.json({ reply: inventory })
-      }
-      return res.json({
-        reply: 'I can help you browse used cars, check live auctions, explain the selling process, or guide you to the Price Predictor.',
-      })
+      return res.status(503).json({ message: 'AI assistant is not configured', code: 'not_configured', requestId })
     }
 
     const capability = await validateChatCapability()

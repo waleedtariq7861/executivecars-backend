@@ -28,7 +28,6 @@ const productSchema = new mongoose.Schema({
   listingType:  { type: String, enum: ['new', 'used'], default: 'used' },
   ownerId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Member', index: true },
   sellerEmail:  { type: String, trim: true },
-  demoKey:      { type: String, sparse: true, index: true },
 }, { timestamps: true })
 
 productSchema.index({ status: 1, createdAt: -1 })

@@ -4,7 +4,6 @@ process.env.CLIENT_URL = 'http://127.0.0.1:5173'
 process.env.ML_API_URL = ''
 process.env.EMAIL_DELIVERY_MODE = 'development'
 process.env.ENABLE_DEMO_SEED = 'true'
-process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = 'true'
 process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
 const { DEFAULT_TEST_URI, validateTestUri, connectTestDatabase, dropTestDatabase, resetTestDatabase } = require('./helpers/localDatabase')
 process.env.MONGO_URI = validateTestUri(process.env.TEST_MONGO_URI || DEFAULT_TEST_URI)
@@ -16,7 +15,9 @@ const { spawnSync } = require('node:child_process')
 const path = require('node:path')
 const crypto = require('node:crypto')
 const mongoose = require('mongoose')
+require('./helpers/noRateLimits')
 const request = require('supertest')
+require('./helpers/cookieAuth')
 const { createApp } = require('../server/app')
 const Admin = require('../src/models/Admin')
 const Member = require('../src/models/Member')
@@ -184,7 +185,7 @@ test('resetting a forgotten password signs the account out everywhere', async ()
   const second = await login()
   const member = await Member.findOne({ email: person.email })
   const rawToken = crypto.randomBytes(32).toString('hex')
-  await PasswordResetToken.create({ accountId: member._id, tokenHash: sha256(rawToken), expiresAt: new Date(Date.now() + 60_000) })
+  await PasswordResetToken.create({ accountModel: 'member', accountId: member._id, tokenHash: sha256(rawToken), expiresAt: new Date(Date.now() + 60_000) })
 
   const reset = await request(app).post('/api/auth/reset-password').send({ token: rawToken, password: 'reset-pass-789' })
   assert.equal(reset.status, 200)
@@ -208,18 +209,6 @@ test('tokens that are not server sessions are rejected, including look-alike JWT
   assert.equal(orphan.status, 401)
   assert.equal(orphan.body.code, 'NOT_AUTHENTICATED')
   assert.equal((await Session.findOne()).revokedReason, 'account_missing')
-})
-
-test('the Bearer header is honoured only under NODE_ENV=test', async () => {
-  const { token } = await register()
-  const previous = process.env.NODE_ENV
-  try {
-    process.env.NODE_ENV = 'production'
-    assert.equal((await sessionStatus(token)).status, 401)
-  } finally {
-    process.env.NODE_ENV = previous
-  }
-  assert.equal((await sessionStatus(token)).status, 200)
 })
 
 test('revoking a session disconnects exactly its sockets', async () => {

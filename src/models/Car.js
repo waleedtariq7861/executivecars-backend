@@ -34,7 +34,6 @@ const carSchema = new mongoose.Schema({
   status:        { type: String, enum: ['active', 'ended', 'cancelled'], default: 'active' },
   ownerId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Member', index: true },
   sellerEmail:   { type: String, trim: true },
-  demoKey:       { type: String, sparse: true, index: true },
 }, { timestamps: true })
 
 carSchema.pre('validate', function (next) {

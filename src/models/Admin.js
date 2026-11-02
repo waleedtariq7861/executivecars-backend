@@ -8,7 +8,6 @@ const adminSchema = new mongoose.Schema({
   password: { type: String, required: true, minlength: 8 },
   phone:    { type: String, trim: true, set: normalizePhone, validate: { validator: value => !value || isValidPhone(value), message: 'Phone must contain 10 to 15 digits' } },
   role:     { type: String, enum: ['admin'], default: 'admin' },
-  demoKey:  { type: String, sparse: true, index: true },
 }, { timestamps: true })
 
 adminSchema.plugin(passwordPlugin)

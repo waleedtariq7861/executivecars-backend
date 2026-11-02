@@ -1,23 +1,12 @@
 const express = require('express')
-const Product = require('../models/Product')
-const { validateInput, predictPrice, modelOptions, FALLBACK_VERSION } = require('../services/valuationService')
+const { validateInput, predictPrice, modelOptions } = require('../services/valuationService')
 const { normalizeForMl, validateConfiguration } = require('../data/vehicleCatalog')
 const { validateDatasetConfiguration } = require('../services/vehicleOptionsService')
 
 const router = express.Router()
 
-router.get('/health', async (req, res, next) => {
-  try {
-    const comparableRecords = await Product.countDocuments({ status: 'available', price: { $gt: 0 } })
-    res.json({
-      status: 'ok',
-      modelServiceConfigured: Boolean(process.env.ML_API_URL),
-      fallbackVersion: FALLBACK_VERSION,
-      comparableRecords,
-    })
-  } catch (error) {
-    next(error)
-  }
+router.get('/health', (req, res) => {
+  res.json({ status: 'ok', modelServiceConfigured: Boolean(process.env.ML_API_URL) })
 })
 
 router.get('/options', async (req, res) => {

@@ -5,18 +5,13 @@ const sessions = require('../utils/sessions')
 
 const ACCOUNT_MODELS = { member: Member, admin: Admin }
 
-// Browsers authenticate with the HttpOnly session cookie. A Bearer header is accepted
-// only under NODE_ENV=test, where the sign-in response exposes the token to the suite.
-const bearerForTests = req => {
-  const header = req.headers.authorization
-  return process.env.NODE_ENV === 'test' && header?.startsWith('Bearer ') ? header.slice(7) : ''
-}
+// Browsers authenticate with the HttpOnly session cookie; there is no other way in.
 
 const reject = (res, code, message = sessions.MESSAGES[code]) => res.status(401).json({ message, code })
 
 const protect = async (req, res, next) => {
   try {
-    const { session, code } = await sessions.findValidSession(sessionTokenFromRequest(req) || bearerForTests(req))
+    const { session, code } = await sessions.findValidSession(sessionTokenFromRequest(req))
     if (!session) return reject(res, code)
 
     const user = await ACCOUNT_MODELS[session.accountModel]?.findById(session.accountId).select('-password')

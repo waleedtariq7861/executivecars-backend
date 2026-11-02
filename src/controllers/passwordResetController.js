@@ -1,7 +1,6 @@
 const crypto = require('crypto')
 const Admin = require('../models/Admin')
 const Member = require('../models/Member')
-const Seller = require('../models/Seller')
 const PasswordResetToken = require('../models/PasswordResetToken')
 const { handleControllerError } = require('../utils/http')
 const { isDemoMode } = require('../config/runtime')
@@ -13,10 +12,9 @@ const { validatePassword } = require('../utils/passwordPolicy')
 
 const RESET_LINK_LIFETIME_MS = 30 * 60 * 1000
 
-// Customers, administrators and legacy sellers can all reset. When one address exists in more than one
-// collection the customer account wins, then the administrator, then the legacy seller.
-const ACCOUNT_MODELS = { member: Member, admin: Admin, seller: Seller }
-const LOOKUP_ORDER = ['member', 'admin', 'seller']
+// Customers and administrators can reset. When one address exists in both collections the customer account wins.
+const ACCOUNT_MODELS = { member: Member, admin: Admin }
+const LOOKUP_ORDER = ['member', 'admin']
 
 const normalizeEmail = (value = '') => String(value).trim().toLowerCase()
 const sha256 = value => crypto.createHash('sha256').update(value).digest('hex')
@@ -75,7 +73,7 @@ const resetPassword = async (req, res) => {
     const resetRecord = await PasswordResetToken.findOne({ tokenHash: sha256(token), expiresAt: { $gt: new Date() } })
     if (!resetRecord) return res.status(400).json({ message: 'Invalid or expired reset link' })
 
-    const accountModel = resetRecord.accountModel || 'member'
+    const { accountModel } = resetRecord
     const account = await ACCOUNT_MODELS[accountModel]?.findById(resetRecord.accountId)
     if (!account) return res.status(400).json({ message: 'Invalid or expired reset link' })
 
@@ -89,10 +87,8 @@ const resetPassword = async (req, res) => {
     await account.save({ validateModifiedOnly: true })
     await PasswordResetToken.deleteMany({ accountModel, accountId: account._id })
     // Whoever knew the old password may still hold a session: end them all after a reset.
-    if (accountModel !== 'seller') {
-      await sessions.revokeAccountSessions({ accountModel, accountId: account._id, reason: 'password_reset', io: req.app.get('io') })
-    }
-    await loginThrottle.clearEmail(accountModel === 'admin' ? 'admin' : 'member', account.email)
+    await sessions.revokeAccountSessions({ accountModel, accountId: account._id, reason: 'password_reset', io: req.app.get('io') })
+    await loginThrottle.clearEmail(accountModel, account.email)
     sendInBackground('Password changed', () => email.sendPasswordChangedEmail(account.email, { name: account.name, reason: 'reset' }))
     res.json({ message: 'Password reset successfully. You can now sign in.' })
   } catch (error) {

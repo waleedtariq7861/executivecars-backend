@@ -12,6 +12,7 @@ const OtpChallenge = require('../src/models/OtpChallenge')
 const MembershipPayment = require('../src/models/MembershipPayment')
 const { demoAccounts: configuredDemoAccounts } = require('../src/config/demoAccounts')
 const { hmac } = require('../src/utils/crypto')
+const DemoSeedEntry = require('./demoSeedRegistry')
 
 const DEMO_PREFIX = 'executive-cars-demo:'
 const key = name => `${DEMO_PREFIX}${name}`
@@ -24,25 +25,18 @@ const requireDemoSeed = () => {
   if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required to create the development OTP challenge')
 }
 
-const demoAccounts = () => {
-  const accounts = configuredDemoAccounts()
-  return {
-    admin: { ...accounts.admin, demoKey: key('admin') },
-    premium: { ...accounts.premium, demoKey: key('premium-member') },
-    regular: { ...accounts.regular, demoKey: key('regular-user') },
-    bidder: { ...accounts.bidder, demoKey: key('bidder') },
-  }
-}
+const demoAccounts = () => configuredDemoAccounts()
 
-const syncAccount = async (Model, account) => {
+const entryFor = seedKey => DemoSeedEntry.findOne({ key: seedKey })
+const register = (seedKey, Model, doc) => DemoSeedEntry.updateOne(
+  { key: seedKey }, { $set: { modelName: Model.modelName, docId: doc._id } }, { upsert: true },
+)
+
+const syncAccount = async (Model, account, seedKey) => {
   const existing = await Model.findOne({ email: account.email })
-  // Migrate only the narrowly identifiable local admin created by server/index.js
-  // before this full demo seed existed. Every other untagged account is protected.
-  const isLegacyLocalAdmin = Model === Admin
-    && account.email === 'admin@executivecars.pk'
-    && existing?.name === 'Local Admin'
-    && existing?.role === 'admin'
-  if (existing && !String(existing.demoKey || '').startsWith(DEMO_PREFIX) && !isLegacyLocalAdmin) {
+  const entry = await entryFor(seedKey)
+  // An account that exists but was not created by this seed is somebody's real account: never overwrite it.
+  if (existing && !(entry && String(entry.docId) === String(existing._id))) {
     throw new Error(`Refusing to overwrite an existing non-demo account: ${account.email}`)
   }
   const record = existing || new Model()
@@ -51,14 +45,18 @@ const syncAccount = async (Model, account) => {
   if (Model === Member && !record.emailVerifiedAt) record.emailVerifiedAt = new Date()
   if (!existing || !(await record.matchPassword(account.password))) record.password = account.password
   await record.save()
+  await register(seedKey, Model, record)
   return record
 }
 
-const syncRecord = (Model, demoKey, fields) => Model.findOneAndUpdate(
-  { demoKey },
-  { $set: { ...fields, demoKey } },
-  { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true },
-)
+const syncRecord = async (Model, seedKey, fields) => {
+  const entry = await entryFor(seedKey)
+  const updated = entry && await Model.findByIdAndUpdate(entry.docId, { $set: fields }, { new: true, runValidators: true })
+  if (updated) return updated
+  const created = await Model.create(fields)
+  await register(seedKey, Model, created)
+  return created
+}
 
 const otpDigest = (email, otp) => hmac('otp', `${email}:${otp}`, 'hex')
 
@@ -66,10 +64,10 @@ const seedDemo = async () => {
   requireDemoSeed()
   if (mongoose.connection.readyState === 0) await connectDB()
   const accounts = demoAccounts()
-  const admin = await syncAccount(Admin, accounts.admin)
-  const waleed = await syncAccount(Member, accounts.premium)
-  const regular = await syncAccount(Member, accounts.regular)
-  const hamza = await syncAccount(Member, accounts.bidder)
+  const admin = await syncAccount(Admin, accounts.admin, key('admin'))
+  const waleed = await syncAccount(Member, accounts.premium, key('premium-member'))
+  const regular = await syncAccount(Member, accounts.regular, key('regular-user'))
+  const hamza = await syncAccount(Member, accounts.bidder, key('bidder'))
   const now = new Date()
   const day = 24 * 60 * 60 * 1000
   await Promise.all([waleed, hamza].map(member => syncRecord(MembershipPayment, key(`membership:${member.email}`), {
@@ -110,20 +108,21 @@ const seedDemo = async () => {
   await Promise.all(bookingSpecs.map(([name, member, details]) => syncRecord(Booking, key(`booking:${name}`), {
     memberId: member._id, name: member.name, email: member.email, phone: member.phone, ...details,
   })))
-  await OtpChallenge.findOneAndUpdate(
+  const challenge = await OtpChallenge.findOneAndUpdate(
     { email: waleed.email },
-    { $set: { email: waleed.email, otpDigest: otpDigest(waleed.email, DEMO_OTP), expiresAt: new Date(now.getTime() + 30 * 60 * 1000), verified: false, attempts: 0, demoKey: key('otp:waleed') } },
+    { $set: { email: waleed.email, otpDigest: otpDigest(waleed.email, DEMO_OTP), expiresAt: new Date(now.getTime() + 30 * 60 * 1000), verified: false, attempts: 0 } },
     { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true },
   )
+  await register(key('otp:waleed'), OtpChallenge, challenge)
   await Member.findByIdAndUpdate(waleed._id, { $set: { savedCars: [products['new-corolla']._id, products['used-city']._id, products['used-sportage']._id] } })
 
   return {
     admin: admin.email,
     accounts: 4,
-    cars: await Product.countDocuments({ demoKey: { $regex: `^${DEMO_PREFIX}` } }),
-    auctions: await Car.countDocuments({ demoKey: { $regex: `^${DEMO_PREFIX}` } }),
-    bids: await Bid.countDocuments({ demoKey: { $regex: `^${DEMO_PREFIX}` } }),
-    inspections: await Booking.countDocuments({ demoKey: { $regex: `^${DEMO_PREFIX}` } }),
+    cars: await DemoSeedEntry.countDocuments({ modelName: Product.modelName }),
+    auctions: await DemoSeedEntry.countDocuments({ modelName: Car.modelName }),
+    bids: await DemoSeedEntry.countDocuments({ modelName: Bid.modelName }),
+    inspections: await DemoSeedEntry.countDocuments({ modelName: Booking.modelName }),
     savedCars: 3,
   }
 }
@@ -131,11 +130,19 @@ const seedDemo = async () => {
 const resetDemo = async () => {
   requireDemoSeed()
   if (mongoose.connection.readyState === 0) await connectDB()
-  const filter = { demoKey: { $regex: `^${DEMO_PREFIX}` } }
-  const [bids, cars, products, bookings, otps, memberships, members, admins] = await Promise.all([
-    Bid.deleteMany(filter), Car.deleteMany(filter), Product.deleteMany(filter), Booking.deleteMany(filter), OtpChallenge.deleteMany(filter), MembershipPayment.deleteMany(filter), Member.deleteMany(filter), Admin.deleteMany(filter),
-  ])
-  return { bids: bids.deletedCount, cars: cars.deletedCount, products: products.deletedCount, bookings: bookings.deletedCount, otps: otps.deletedCount, memberships: memberships.deletedCount, members: members.deletedCount, admins: admins.deletedCount }
+  const models = { Bid, Car, Product, Booking, OtpChallenge, MembershipPayment, Member, Admin }
+  const entries = await DemoSeedEntry.find().lean()
+  const removed = {}
+  // Dependent records first, accounts last.
+  for (const [name, Model] of Object.entries(models)) {
+    const ids = entries.filter(entry => entry.modelName === name).map(entry => entry.docId)
+    removed[name] = ids.length ? (await Model.deleteMany({ _id: { $in: ids } })).deletedCount : 0
+  }
+  await DemoSeedEntry.deleteMany({})
+  return {
+    bids: removed.Bid, cars: removed.Car, products: removed.Product, bookings: removed.Booking, otps: removed.OtpChallenge,
+    memberships: removed.MembershipPayment, members: removed.Member, admins: removed.Admin,
+  }
 }
 
 const run = async () => {

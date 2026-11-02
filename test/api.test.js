@@ -4,7 +4,6 @@ process.env.CLIENT_URL = 'http://127.0.0.1:5173'
 process.env.ML_API_URL = ''
 process.env.EMAIL_DELIVERY_MODE = 'development'
 process.env.ENABLE_DEMO_SEED = 'true'
-process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = 'true'
 process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
 const { DEFAULT_TEST_URI, validateTestUri, connectTestDatabase, dropTestDatabase, resetTestDatabase } = require('./helpers/localDatabase')
 process.env.MONGO_URI = validateTestUri(process.env.TEST_MONGO_URI || DEFAULT_TEST_URI)
@@ -17,7 +16,9 @@ const mongoose = require('mongoose')
 const crypto = require('crypto')
 const fs = require('fs/promises')
 const path = require('path')
+require('./helpers/noRateLimits')
 const request = require('supertest')
+require('./helpers/cookieAuth')
 const { createApp } = require('../server/app')
 const Product = require('../src/models/Product')
 const Car = require('../src/models/Car')
@@ -29,7 +30,8 @@ const Member = require('../src/models/Member')
 // that against the real check): customers created here are treated as verified.
 Member.prototype.isEmailVerified = () => true
 const MembershipPayment = require('../src/models/MembershipPayment')
-const { DEMO_OTP, seedDemo } = require('../scripts/seedDemo')
+const { DEMO_OTP, seedDemo, resetDemo } = require('../scripts/seedDemo')
+const DemoSeedEntry = require('../scripts/demoSeedRegistry')
 const { privateUploadDir } = require('../src/config/cloudinary')
 const { validateRuntimeConfig } = require('../src/config/runtime')
 const { hmac } = require('../src/utils/crypto')
@@ -97,9 +99,7 @@ test('login and predictor reject invalid input', async () => {
 
 test('browser sessions use HttpOnly cookies, restore safely, enforce CSRF, and log out', async () => {
   const browser = request.agent(app)
-  const previousExposure = process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS
-  delete process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS
-  try {
+  {
     const registration = await browser.post('/api/auth/register').send({
       name: 'Cookie Session User', email: 'cookie-session@example.com', phone: '+92 300 7778899', password: 'test-pass-123',
     })
@@ -138,8 +138,6 @@ test('browser sessions use HttpOnly cookies, restore safely, enforce CSRF, and l
     assert.equal(logout.status, 200)
     assert.match(logout.headers['set-cookie'][0], /ec_session=;/)
     assert.equal((await browser.get('/api/auth/session')).status, 401)
-  } finally {
-    process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS = previousExposure
   }
 })
 
@@ -207,7 +205,7 @@ test('auction inventory requires active membership and returns an approved DTO',
   const car = await Car.create({
     make: 'Toyota', model: 'Corolla', year: 2020, km: 50000, engine: '1800', basePrice: 4000000,
     currentBid: 4100000, highestBidder: otherBidder._id, bidCount: 1,
-    ownerId: otherBidder._id, sellerEmail: 'seller-private@example.com', demoKey: 'private-internal-key',
+    ownerId: otherBidder._id, sellerEmail: 'seller-private@example.com',
     auctionStart: new Date(Date.now() - 60000), auctionEnd: new Date(Date.now() + 3600000),
   })
 
@@ -222,7 +220,7 @@ test('auction inventory requires active membership and returns an approved DTO',
   assert.equal(activeList.body[0].model, 'Corolla')
   assert.equal(activeList.body[0].highestBidder.name, 'Pr***')
   assert.equal(activeList.body[0].highestBidder._id, undefined)
-  for (const forbidden of ['ownerId', 'sellerEmail', 'demoKey']) {
+  for (const forbidden of ['ownerId', 'sellerEmail']) {
     assert.equal(activeList.body[0][forbidden], undefined)
   }
 
@@ -565,9 +563,7 @@ test('demo and removed Stripe surfaces cannot activate in production mode', asyn
     process.env.APP_MODE = 'production'
     process.env.NODE_ENV = 'production'
     const demoPayment = await request(app).post('/api/payments/demo-complete').set(auth)
-    const demoAccounts = await request(app).get('/api/demo/accounts')
     assert.equal(demoPayment.status, 404)
-    assert.equal(demoAccounts.status, 404)
   } finally {
     if (previousMode === undefined) delete process.env.APP_MODE
     else process.env.APP_MODE = previousMode
@@ -637,7 +633,6 @@ test('hosted simulation uses cookies and CSRF, restores access and preserves it 
     assert.equal(session.body.user.membershipSource, 'demo')
     assert.equal(session.body.user.subscriptionExpiry, completed.body.subscriptionExpiry)
     assert.equal((await activate()).status, 409)
-    assert.equal((await request(app).get('/api/demo/accounts')).status, 404)
     assert.equal((await request(app).post('/api/payments/create-checkout-session')).status, 404)
     process.env.ENABLE_HOSTED_DEMO_MEMBERSHIP = 'false'
     assert.equal((await request(app).get('/api/payments/capabilities')).body.activationMode, 'unavailable')
@@ -869,12 +864,16 @@ test('development demo seed is idempotent and its accounts enforce real roles', 
   const second = await seedDemo()
   assert.equal(first.accounts, 4)
   assert.equal(second.cars, 5)
-  assert.equal(await Member.countDocuments({ demoKey: { $regex: '^executive-cars-demo:' } }), 3)
-  assert.equal(await Admin.countDocuments({ demoKey: { $regex: '^executive-cars-demo:' } }), 1)
-  assert.equal(await Product.countDocuments({ demoKey: { $regex: '^executive-cars-demo:' } }), 5)
-  assert.equal(await Car.countDocuments({ demoKey: { $regex: '^executive-cars-demo:' } }), 4)
-  assert.equal(await Bid.countDocuments({ demoKey: { $regex: '^executive-cars-demo:' } }), 6)
-  assert.equal(await Booking.countDocuments({ demoKey: { $regex: '^executive-cars-demo:' } }), 4)
+  const seeded = modelName => DemoSeedEntry.countDocuments({ modelName })
+  assert.equal(await seeded('Member'), 3)
+  assert.equal(await seeded('Admin'), 1)
+  assert.equal(await seeded('Product'), 5)
+  assert.equal(await seeded('Car'), 4)
+  assert.equal(await seeded('Bid'), 6)
+  assert.equal(await seeded('Booking'), 4)
+  // Repeating the seed updates the same documents instead of adding new ones.
+  assert.equal(await Product.countDocuments(), 5)
+  assert.equal(await Car.countDocuments(), 4)
   const seededPremium = await Member.findOne({ email: 'member@executivecars.pk' })
   assert.match(seededPremium.password, /^\$argon2id\$/)
   assert.notEqual(seededPremium.password, 'Member@12345')
@@ -904,4 +903,24 @@ test('development demo seed is idempotent and its accounts enforce real roles', 
     .set('Authorization', `Bearer ${premium.body.token}`)
     .send({ email: 'member@executivecars.pk', otp: DEMO_OTP })
   assert.equal(verifiedOtp.status, 200)
+})
+
+test('demo reset removes only what the seed created and leaves real accounts alone', async () => {
+  const real = await Member.create({ name: 'Real Person', email: 'real-person@example.com', password: 'orchid-lantern-42' })
+  const realCar = await Product.create({ make: 'Toyota', model: 'Yaris', year: 2023, km: 1000, price: 4000000, status: 'available' })
+  await seedDemo()
+  assert.equal(await Member.countDocuments(), 4)
+  const removed = await resetDemo()
+  assert.equal(removed.members, 3)
+  assert.equal(removed.admins, 1)
+  assert.equal(removed.products, 5)
+  assert.equal(await DemoSeedEntry.countDocuments(), 0)
+  assert.equal(await Member.countDocuments(), 1)
+  assert.ok(await Member.findById(real._id))
+  assert.ok(await Product.findById(realCar._id))
+})
+
+test('the demo seed refuses to overwrite a real account that has a demo address', async () => {
+  await Member.create({ name: 'Real Owner', email: 'member@executivecars.pk', password: 'orchid-lantern-42' })
+  await assert.rejects(seedDemo(), /Refusing to overwrite an existing non-demo account/)
 })

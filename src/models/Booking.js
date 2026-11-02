@@ -30,7 +30,6 @@ const bookingSchema = new mongoose.Schema({
   notes:        { type: String, trim: true, maxlength: 500 },
   status:       { type: String, enum: ['pending', 'approved', 'rejected', 'confirmed', 'completed', 'cancelled'], default: 'pending' },
   sellerCreated:{ type: Boolean, default: false },
-  demoKey:      { type: String, sparse: true, index: true },
 }, { timestamps: true })
 
 module.exports = mongoose.model('Booking', bookingSchema)

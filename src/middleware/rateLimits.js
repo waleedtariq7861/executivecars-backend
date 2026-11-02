@@ -4,7 +4,6 @@ const createLimiter = ({ windowMs, limit, message, skipSuccessfulRequests = fals
   windowMs,
   limit,
   skipSuccessfulRequests,
-  skip: () => process.env.NODE_ENV === 'test',
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: { message, code: 'RATE_LIMITED' },

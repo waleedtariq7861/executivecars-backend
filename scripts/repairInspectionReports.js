@@ -24,15 +24,8 @@ const unsafeLegacyReport = {
     ] },
   ],
 }
-const legacyDemoDescription = {
-  demoKey: 'executive-cars-demo:product:used-swift',
-  description: 'Well-kept automatic Swift with current inspection report.',
-  ...missingPrivateAsset,
-}
-
 const summarize = records => records.map(record => ({
   id: String(record._id),
-  demoKey: record.demoKey || null,
   make: record.make,
   model: record.model,
   year: record.year,
@@ -45,14 +38,12 @@ const summarize = records => records.map(record => ({
 
 async function main() {
   await connectDB()
-  const fields = '_id demoKey make model year inspectionStatus inspectionScore inspectionDocument pdfUrl description'
-  const [products, auctions, demoDescriptions, productCount, auctionCount, swiftDemo] = await Promise.all([
+  const fields = '_id make model year inspectionStatus inspectionScore inspectionDocument pdfUrl description'
+  const [products, auctions, productCount, auctionCount] = await Promise.all([
     Product.find(unsafeLegacyReport).select(fields).lean(),
     Car.find(unsafeLegacyReport).select(fields).lean(),
-    Product.find(legacyDemoDescription).select(fields).lean(),
     Product.countDocuments(),
     Car.countDocuments(),
-    Product.findOne({ demoKey: 'executive-cars-demo:product:used-swift' }).select(fields).lean(),
   ])
 
   const backup = {
@@ -61,18 +52,15 @@ async function main() {
     rule: 'Any legacy report metadata without inspectionDocument.key becomes not_available; inspectionScore and permanent pdfUrl are removed',
     products: summarize(products),
     auctions: summarize(auctions),
-    demoDescriptions: summarize(demoDescriptions),
   }
 
   console.log(JSON.stringify({
     mode: backup.mode,
     affectedProducts: products.length,
     affectedAuctions: auctions.length,
-    affectedDemoDescriptions: demoDescriptions.length,
-    affectedTotal: products.length + auctions.length + demoDescriptions.length,
+    affectedTotal: products.length + auctions.length,
     inventoryProducts: productCount,
     inventoryAuctions: auctionCount,
-    swiftDemo: swiftDemo ? summarize([swiftDemo])[0] : null,
   }, null, 2))
 
   if (!apply) {
@@ -91,16 +79,10 @@ async function main() {
     Car.updateMany(unsafeLegacyReport, { $set: { inspectionStatus: 'not_available' }, $unset: { inspectionScore: 1, pdfUrl: 1 } }),
   ])
 
-  const demoDescriptionResult = await Product.updateOne(
-    legacyDemoDescription,
-    { $set: { description: 'Well-kept automatic Swift with documented service history.' } },
-  )
-
   console.log(JSON.stringify({
     backupPath,
     repairedProducts: productResult.modifiedCount,
     repairedAuctions: auctionResult.modifiedCount,
-    repairedDemoDescriptions: demoDescriptionResult.modifiedCount,
   }, null, 2))
 }
 

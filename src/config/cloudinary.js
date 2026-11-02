@@ -64,7 +64,7 @@ const validateMagicBytes = async file => {
   }
 }
 
-const cleanLocalFiles = files => Promise.all(files.filter(file => file.path).map(file => fs.promises.unlink(file.path).catch(() => {})))
+const cleanLocalFiles = files => Promise.all(files.filter(file => file.path).map(file => fs.promises.unlink(file.path).catch(error => { if (error.code !== 'ENOENT') console.error('Temporary upload could not be removed:', error.message) })))
 
 const deleteUploadedFile = async file => {
   if (!file) return
@@ -115,7 +115,7 @@ const cloudinaryMiddleware = (fields, getOptions) => {
       cleanUploadsAfterFailedResponse(res, files)
       return next()
     } catch (uploadError) {
-      await cleanUploadedFiles(Object.values(req.files || {}).flat()).catch(() => {})
+      await cleanUploadedFiles(Object.values(req.files || {}).flat()).catch(error => console.error('Upload clean-up after a failed upload also failed:', error.message))
       if (!uploadError.status) uploadError.status = 502
       return next(uploadError)
     }

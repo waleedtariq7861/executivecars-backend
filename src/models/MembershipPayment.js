@@ -7,7 +7,6 @@ const membershipPaymentSchema = new mongoose.Schema({
   plan: { type: String, required: true },
   paymentMode: { type: String, enum: ['demo'], required: true },
   status: { type: String, enum: ['completed'], required: true },
-  demoKey: { type: String, sparse: true, index: true },
 }, { timestamps: true })
 
 module.exports = mongoose.model('MembershipPayment', membershipPaymentSchema)
