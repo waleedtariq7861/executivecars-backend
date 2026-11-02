@@ -70,6 +70,28 @@ const sendOTPEmail = async (to, otp) => {
   })
 }
 
+const sendVerificationCodeEmail = async (to, { name, code }) => {
+  await sendEmail({
+    to,
+    subject: 'Verify your Executive Cars email address',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+        <div style="background: #0f172a; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="color: #fff; margin: 0; font-size: 22px;">Executive <span style="color: #3b82f6;">Cars</span></h1>
+        </div>
+        <div style="background: #f8fafc; padding: 32px; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0;">
+          <h2 style="color: #0f172a; margin-top: 0;">Verify your email address</h2>
+          <p style="color: #64748b;">Hi ${escapeHtml(name || 'there')}, enter this code on Executive Cars to confirm your email address.</p>
+          <div style="background: #fff; border: 2px solid #3b82f6; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+            <span style="font-size: 40px; font-weight: 900; letter-spacing: 12px; color: #1e40af;">${escapeHtml(code)}</span>
+          </div>
+          <p style="color: #94a3b8; font-size: 13px;">This code expires in <strong>10 minutes</strong>. Do not share it with anyone. If you did not create an account, ignore this email.</p>
+        </div>
+      </div>
+    `,
+  })
+}
+
 const sendBookingConfirmationEmail = async (to, name, date, branch) => {
   const formatted = new Date(date).toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })
   await sendEmail({
@@ -143,4 +165,4 @@ const sendPasswordChangedEmail = async (to, { name, reason = 'change', at = new 
   })
 }
 
-module.exports = { sendOTPEmail, sendBookingConfirmationEmail, sendPasswordResetEmail, sendPasswordChangedEmail }
+module.exports = { sendOTPEmail, sendVerificationCodeEmail, sendBookingConfirmationEmail, sendPasswordResetEmail, sendPasswordChangedEmail }

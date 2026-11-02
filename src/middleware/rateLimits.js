@@ -45,6 +45,12 @@ const resetPasswordLimiter = createLimiter({
   message: 'Too many password reset attempts. Please try again in 15 minutes.',
 })
 
+const emailVerificationLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  message: 'Too many verification requests. Please try again later.',
+})
+
 const otpLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   limit: 5,
@@ -63,4 +69,4 @@ const chatLimiter = createLimiter({
   message: 'Too many assistant requests. Please wait a minute and try again.',
 })
 
-module.exports = { loginLimiter, adminLoginLimiter, registerLimiter, forgotPasswordLimiter, resetPasswordLimiter, otpLimiter, predictionLimiter, chatLimiter }
+module.exports = { loginLimiter, adminLoginLimiter, registerLimiter, forgotPasswordLimiter, resetPasswordLimiter, emailVerificationLimiter, otpLimiter, predictionLimiter, chatLimiter }

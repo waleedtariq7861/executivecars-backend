@@ -25,6 +25,9 @@ const Bid = require('../src/models/Bid')
 const Admin = require('../src/models/Admin')
 const Booking = require('../src/models/Booking')
 const Member = require('../src/models/Member')
+// This suite is about bids, payments, bookings and sockets, not email verification (emailVerification.test.js covers
+// that against the real check): customers created here are treated as verified.
+Member.prototype.isEmailVerified = () => true
 const MembershipPayment = require('../src/models/MembershipPayment')
 const { DEMO_OTP, seedDemo } = require('../scripts/seedDemo')
 const { privateUploadDir } = require('../src/config/cloudinary')

@@ -8,6 +8,7 @@ const sessions = require('../utils/sessions')
 const loginThrottle = require('../utils/loginThrottle')
 const { hashPassword, verifyWithEqualCost } = require('../utils/passwordHash')
 const { validatePassword } = require('../utils/passwordPolicy')
+const { sendVerificationCode } = require('./emailVerificationController')
 const {
   normalizePersonName,
   normalizePhone,
@@ -53,9 +54,9 @@ const upgradeHashIfNeeded = async (Model, account, password) => {
 }
 
 // Every sign-in creates a fresh server-side session and hands the browser its opaque token.
-const startSession = async (req, res, { account, accountModel, role, user, status = 200 }) => {
+const startSession = async (req, res, { account, accountModel, role, user, status = 200, extra = {} }) => {
   const { token, session } = await sessions.createSession({ account, accountModel, role, req })
-  const body = { user, csrfToken: attachSession(res, token, session.absoluteExpiresAt.getTime() - Date.now()) }
+  const body = { ...extra, user, csrfToken: attachSession(res, token, session.absoluteExpiresAt.getTime() - Date.now()) }
   if (process.env.EXPOSE_AUTH_TOKEN_FOR_TESTS === 'true' && process.env.NODE_ENV === 'test') body.token = token
   return res.status(status).json(body)
 }
@@ -68,6 +69,7 @@ const accountPayload = (account) => {
     email: account.email,
     phone: account.phone,
     role: 'user',
+    emailVerified: account.isEmailVerified(),
     sellerApproved: Boolean(account.sellerApproved),
     subscriptionStatus: auctionActive ? 'active' : (account.subscriptionStatus === 'active' ? 'expired' : account.subscriptionStatus),
     subscriptionExpiry: account.subscriptionExpiry,
@@ -144,7 +146,9 @@ const accountRegister = async (req, res) => {
     }
 
     const account = await Member.create({ name, email, phone, password, role: 'user' })
-    await startSession(req, res, { account, accountModel: 'member', role: 'user', user: accountPayload(account), status: 201 })
+    // The sign-up response says whether the code went out, so the screen can offer a resend instead of failing silently.
+    const verification = await sendVerificationCode(account)
+    await startSession(req, res, { account, accountModel: 'member', role: 'user', user: accountPayload(account), status: 201, extra: { verification } })
   } catch (err) {
     handleControllerError(res, err, 'Registration failed')
   }
@@ -179,6 +183,8 @@ const accountLogin = async (req, res) => {
           address: legacySeller.address,
           password,
           role: 'user',
+          // A legacy seller's address was already proven by the booking code.
+          emailVerifiedAt: new Date(),
           sellerApproved: true,
           sellerBookingId: legacySeller.bookingId,
         })

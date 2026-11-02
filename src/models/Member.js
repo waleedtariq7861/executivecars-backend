@@ -18,6 +18,8 @@ const memberSchema = new mongoose.Schema({
   address:              { type: String, trim: true },
   city:                 { type: String, trim: true },
   role:                 { type: String, enum: ['user'], default: 'user' },
+  // Set when the owner proves the address (code sent to it, or the booking code); see utils/emailVerification.js.
+  emailVerifiedAt:      { type: Date },
   sellerApproved:       { type: Boolean, default: false },
   sellerBookingId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
   subscriptionStatus:   { type: String, enum: ['active', 'inactive', 'expired'], default: 'inactive' },
@@ -32,6 +34,10 @@ const memberSchema = new mongoose.Schema({
 }, { timestamps: true })
 
 memberSchema.plugin(passwordPlugin)
+
+memberSchema.methods.isEmailVerified = function isEmailVerified() {
+  return require('../utils/emailVerification').isEmailVerified(this)
+}
 
 memberSchema.methods.hasActiveSubscription = function () {
   return this.subscriptionStatus === 'active'

@@ -47,6 +47,8 @@ const syncAccount = async (Model, account) => {
   }
   const record = existing || new Model()
   Object.assign(record, account)
+  // Seeded demo customers are real enough to bid; they do not go through email verification.
+  if (Model === Member && !record.emailVerifiedAt) record.emailVerifiedAt = new Date()
   if (!existing || !(await record.matchPassword(account.password))) record.password = account.password
   await record.save()
   return record
