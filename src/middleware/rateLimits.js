@@ -44,6 +44,13 @@ const resetPasswordLimiter = createLimiter({
   message: 'Too many password reset attempts. Please try again in 15 minutes.',
 })
 
+// Setting up, changing and using the second factor all re-check secrets, so they get a tight flood guard of their own.
+const mfaLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  message: 'Too many two-step sign-in requests. Please try again in 15 minutes.',
+})
+
 const emailVerificationLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   limit: 30,
@@ -74,4 +81,4 @@ const chatLimiter = createLimiter({
   message: 'Too many assistant requests. Please wait a minute and try again.',
 })
 
-module.exports = { loginLimiter, adminLoginLimiter, registerLimiter, forgotPasswordLimiter, resetPasswordLimiter, emailVerificationLimiter, paymentLimiter, otpLimiter, predictionLimiter, chatLimiter }
+module.exports = { loginLimiter, adminLoginLimiter, registerLimiter, forgotPasswordLimiter, resetPasswordLimiter, emailVerificationLimiter, mfaLimiter, paymentLimiter, otpLimiter, predictionLimiter, chatLimiter }
