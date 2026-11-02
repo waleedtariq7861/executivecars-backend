@@ -4,6 +4,7 @@ const EVENT_TYPES = [
   'registered', 'login_success', 'login_failure', 'logout',
   'password_changed', 'reset_requested', 'reset_completed',
   'email_verified', 'session_revoked', 'mail_failed',
+  'mfa_enabled', 'mfa_disabled', 'mfa_failed', 'recovery_code_used', 'recovery_codes_regenerated',
 ]
 
 // Audit trail of account-security events. It holds no secrets: the e-mail address is masked, there are no

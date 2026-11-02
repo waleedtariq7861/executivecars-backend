@@ -14,6 +14,8 @@ const sessionSchema = new mongoose.Schema({
   expireAt:          { type: Date, required: true, index: { expires: 0 } },
   ip:                { type: String },
   userAgent:         { type: String },
+  // Set when the sign-in also proved a second factor.
+  mfaVerifiedAt:     { type: Date },
   revokedAt:         { type: Date },
   revokedReason:     { type: String },
 }, { timestamps: true })

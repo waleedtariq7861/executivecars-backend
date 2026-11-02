@@ -4,7 +4,9 @@ const { handleControllerError } = require('../utils/http')
 const email = require('../utils/email')
 const { sendInBackground } = require('../utils/background')
 const { recordAuthEvent } = require('../utils/authEvents')
-const { attachSession, clearSession, csrfTokenForSession, sessionTokenFromRequest } = require('../utils/session')
+const { clearSession, csrfTokenForSession, sessionTokenFromRequest } = require('../utils/session')
+const { rejectIfThrottled, startSession } = require('../utils/authFlow')
+const mfa = require('./mfaController')
 const sessions = require('../utils/sessions')
 const loginThrottle = require('../utils/loginThrottle')
 const { verifyWithEqualCost } = require('../utils/passwordHash')
@@ -23,31 +25,9 @@ const MAX_LOGIN_PASSWORD_LENGTH = 1024
 const loginInputIsValid = (email, password) => /^\S+@\S+\.\S+$/.test(email)
   && typeof password === 'string' && password.length > 0 && password.length <= MAX_LOGIN_PASSWORD_LENGTH
 
-const secondsLabel = (seconds) => (seconds >= 120 ? `${Math.ceil(seconds / 60)} minutes` : `${seconds} second${seconds === 1 ? '' : 's'}`)
-
-// 429 with Retry-After while a throttle delay is running. Returns true when it answered.
-const rejectIfThrottled = async (res, kind, who) => {
-  const wait = await loginThrottle.check(kind, who)
-  if (!wait) return false
-  res.set('Retry-After', String(wait))
-  res.status(429).json({
-    message: `Too many failed sign-in attempts. Try again in ${secondsLabel(wait)}.`,
-    code: 'LOGIN_THROTTLED',
-    retryAfterSeconds: wait,
-  })
-  return true
-}
-
 const passwordProblem = (res, result) => res.status(400).json({
   message: result.message, code: result.code, errors: { password: result.message },
 })
-
-// Every sign-in creates a fresh server-side session and hands the browser its opaque token.
-const startSession = async (req, res, { account, accountModel, role, user, status = 200, extra = {} }) => {
-  const { token, session } = await sessions.createSession({ account, accountModel, role, req })
-  const body = { ...extra, user, csrfToken: attachSession(res, token, session.absoluteExpiresAt.getTime() - Date.now()) }
-  return res.status(status).json(body)
-}
 
 const accountPayload = (account) => {
   const auctionActive = account.hasActiveSubscription()
@@ -99,11 +79,19 @@ const adminLogin = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
+    // With two-step sign-in on, the password alone is not a sign-in: no session yet, and the throttle is NOT
+    // reset, so a stolen password cannot be used to guess second-factor codes without limit.
+    if (await mfa.isMfaEnabled(admin._id)) {
+      const challenge = await mfa.issueChallenge(admin)
+      res.set('Cache-Control', 'no-store')
+      return res.json({ mfaRequired: true, challenge: challenge.token, expiresInSeconds: challenge.expiresInSeconds })
+    }
+
     await loginThrottle.recordSuccess('admin', who)
     await recordAuthEvent('login_success', { req, accountModel: 'admin', accountId: admin._id, email })
     await startSession(req, res, {
       account: admin, accountModel: 'admin', role: 'admin',
-      user: { id: admin._id, name: admin.name, email: admin.email, role: 'admin' },
+      user: { id: admin._id, name: admin.name, email: admin.email, role: 'admin', mfaEnabled: false },
     })
   } catch (err) {
     handleControllerError(res, err, 'Admin sign in failed')
@@ -211,12 +199,16 @@ const changePassword = async (req, res) => {
 }
 
 const session = async (req, res) => {
-  const token = sessionTokenFromRequest(req)
-  const user = req.accountRole === 'admin'
-    ? { id: req.user._id, name: req.user.name, email: req.user.email, role: 'admin' }
-    : accountPayload(req.user)
-  res.set('Cache-Control', 'no-store')
-  res.json({ user, csrfToken: csrfTokenForSession(token) })
+  try {
+    const token = sessionTokenFromRequest(req)
+    const user = req.accountRole === 'admin'
+      ? { id: req.user._id, name: req.user.name, email: req.user.email, role: 'admin', mfaEnabled: await mfa.isMfaEnabled(req.user._id) }
+      : accountPayload(req.user)
+    res.set('Cache-Control', 'no-store')
+    res.json({ user, csrfToken: csrfTokenForSession(token) })
+  } catch (err) {
+    handleControllerError(res, err, 'Could not load your session')
+  }
 }
 
 // Works with any cookie, even a stale one: the session (if it still exists) is revoked on the server

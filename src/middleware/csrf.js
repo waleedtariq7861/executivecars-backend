@@ -7,6 +7,7 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 const ORIGIN_ONLY_PATHS = new Set(['/api/auth/logout'])
 const UNAUTHENTICATED_AUTH_PATHS = new Set([
   '/api/auth/admin/login',
+  '/api/auth/admin/login/mfa',
   '/api/auth/register',
   '/api/auth/login',
   '/api/auth/forgot-password',

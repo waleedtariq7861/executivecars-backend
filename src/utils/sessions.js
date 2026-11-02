@@ -28,7 +28,7 @@ const lifetimes = role => (role === 'admin'
 
 const clientAgent = req => String(req?.get?.('user-agent') || '').slice(0, 200)
 
-const createSession = async ({ accountModel, account, role, req }) => {
+const createSession = async ({ accountModel, account, role, req, mfaVerified = false }) => {
   const token = randomToken(32)
   const now = Date.now()
   const { idleMs, absoluteMs } = lifetimes(role)
@@ -44,6 +44,7 @@ const createSession = async ({ accountModel, account, role, req }) => {
     expireAt: absoluteExpiresAt,
     ip: req?.ip,
     userAgent: clientAgent(req),
+    ...(mfaVerified ? { mfaVerifiedAt: new Date(now) } : {}),
   })
   return { token, session }
 }
