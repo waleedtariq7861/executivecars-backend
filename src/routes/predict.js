@@ -2,11 +2,12 @@ const express = require('express')
 const { validateInput, predictPrice, modelOptions } = require('../services/valuationService')
 const { normalizeForMl, validateConfiguration } = require('../data/vehicleCatalog')
 const { validateDatasetConfiguration } = require('../services/vehicleOptionsService')
+const { isConfigured } = require('../services/modelServiceClient')
 
 const router = express.Router()
 
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok', modelServiceConfigured: Boolean(process.env.ML_API_URL) })
+  res.json({ status: 'ok', modelServiceConfigured: isConfigured() })
 })
 
 router.get('/options', async (req, res) => {
@@ -22,7 +23,7 @@ router.post('/', async (req, res, next) => {
     }
     const configurationErrors = validateConfiguration(input)
     if (Object.keys(configurationErrors).length) return res.status(400).json({ message: 'Please correct the vehicle configuration.', errors: configurationErrors })
-    const datasetErrors = validateDatasetConfiguration(input)
+    const datasetErrors = await validateDatasetConfiguration(input)
     if (Object.keys(datasetErrors).length) return res.status(400).json({ message: 'Please correct the vehicle configuration.', errors: datasetErrors })
     const result = await predictPrice(normalizeForMl(input))
     return res.json(result)

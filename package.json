@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Executive Cars MERN backend",
   "main": "server/index.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",

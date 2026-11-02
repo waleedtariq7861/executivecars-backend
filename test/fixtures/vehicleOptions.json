@@ -1,0 +1,5437 @@
+{
+ "version": 1,
+ "generatedAt": "2026-08-20T12:42:58.087318+00:00",
+ "source": "cleaned_ml_training_dataset",
+ "filtering": {
+  "minimumModelRows": 3,
+  "minimumSpecificationRowsPerModelYear": 2,
+  "excludedValues": [
+   "Unknown",
+   ""
+  ]
+ },
+ "makes": [
+  {
+   "make": "Toyota",
+   "count": 11946,
+   "models": [
+    {
+     "model": "Corolla",
+     "count": 11946,
+     "years": [
+      {
+       "year": 2022,
+       "count": 716,
+       "engines": [
+        {
+         "value": 1598,
+         "count": 263
+        },
+        {
+         "value": 1600,
+         "count": 194
+        },
+        {
+         "value": 1800,
+         "count": 95
+        },
+        {
+         "value": 1798,
+         "count": 92
+        },
+        {
+         "value": 1799,
+         "count": 68
+        },
+        {
+         "value": 1300,
+         "count": 3
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 696
+        },
+        {
+         "value": "Manual",
+         "count": 20
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 715
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 710
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 18
+        }
+       ]
+      },
+      {
+       "year": 2021,
+       "count": 703,
+       "engines": [
+        {
+         "value": 1598,
+         "count": 249
+        },
+        {
+         "value": 1600,
+         "count": 156
+        },
+        {
+         "value": 1800,
+         "count": 112
+        },
+        {
+         "value": 1799,
+         "count": 94
+        },
+        {
+         "value": 1798,
+         "count": 80
+        },
+        {
+         "value": 1300,
+         "count": 9
+        },
+        {
+         "value": 1500,
+         "count": 3
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 664
+        },
+        {
+         "value": "Manual",
+         "count": 39
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 700
+        },
+        {
+         "value": "Hybrid",
+         "count": 3
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 685
+        },
+        {
+         "value": "Suv",
+         "count": 3
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 12
+        }
+       ]
+      },
+      {
+       "year": 2020,
+       "count": 484,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 163
+        },
+        {
+         "value": 1600,
+         "count": 159
+        },
+        {
+         "value": 1798,
+         "count": 77
+        },
+        {
+         "value": 1800,
+         "count": 72
+        },
+        {
+         "value": 1500,
+         "count": 9
+        },
+        {
+         "value": 2000,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 394
+        },
+        {
+         "value": "Manual",
+         "count": 90
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 468
+        },
+        {
+         "value": "Hybrid",
+         "count": 16
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 463
+        },
+        {
+         "value": "Hatchback",
+         "count": 2
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 31
+        }
+       ]
+      },
+      {
+       "year": 2019,
+       "count": 858,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 458
+        },
+        {
+         "value": 1600,
+         "count": 226
+        },
+        {
+         "value": 1798,
+         "count": 97
+        },
+        {
+         "value": 1800,
+         "count": 67
+        },
+        {
+         "value": 1500,
+         "count": 7
+        },
+        {
+         "value": 2000,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 640
+        },
+        {
+         "value": "Manual",
+         "count": 218
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 849
+        },
+        {
+         "value": "Hybrid",
+         "count": 9
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 838
+        },
+        {
+         "value": "Station Wagon",
+         "count": 2
+        },
+        {
+         "value": "Hatchback",
+         "count": 2
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 45
+        }
+       ]
+      },
+      {
+       "year": 2018,
+       "count": 974,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 521
+        },
+        {
+         "value": 1600,
+         "count": 217
+        },
+        {
+         "value": 1800,
+         "count": 111
+        },
+        {
+         "value": 1798,
+         "count": 98
+        },
+        {
+         "value": 1500,
+         "count": 24
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 639
+        },
+        {
+         "value": "Manual",
+         "count": 335
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 971
+        },
+        {
+         "value": "Hybrid",
+         "count": 3
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 949
+        },
+        {
+         "value": "Station Wagon",
+         "count": 14
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 41
+        }
+       ]
+      },
+      {
+       "year": 2017,
+       "count": 912,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 539
+        },
+        {
+         "value": 1600,
+         "count": 158
+        },
+        {
+         "value": 1800,
+         "count": 88
+        },
+        {
+         "value": 1798,
+         "count": 83
+        },
+        {
+         "value": 1500,
+         "count": 43
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 545
+        },
+        {
+         "value": "Manual",
+         "count": 367
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 901
+        },
+        {
+         "value": "Hybrid",
+         "count": 11
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 881
+        },
+        {
+         "value": "Station Wagon",
+         "count": 15
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 64
+        }
+       ]
+      },
+      {
+       "year": 2016,
+       "count": 793,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 504
+        },
+        {
+         "value": 1600,
+         "count": 108
+        },
+        {
+         "value": 1800,
+         "count": 98
+        },
+        {
+         "value": 1798,
+         "count": 71
+        },
+        {
+         "value": 1500,
+         "count": 11
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 428
+        },
+        {
+         "value": "Manual",
+         "count": 365
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 790
+        },
+        {
+         "value": "Hybrid",
+         "count": 3
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 782
+        },
+        {
+         "value": "Station Wagon",
+         "count": 3
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 35
+        }
+       ]
+      },
+      {
+       "year": 2015,
+       "count": 879,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 546
+        },
+        {
+         "value": 1600,
+         "count": 113
+        },
+        {
+         "value": 1798,
+         "count": 96
+        },
+        {
+         "value": 1800,
+         "count": 88
+        },
+        {
+         "value": 1500,
+         "count": 36
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 485
+        },
+        {
+         "value": "Manual",
+         "count": 394
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 872
+        },
+        {
+         "value": "Hybrid",
+         "count": 7
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 850
+        },
+        {
+         "value": "Station Wagon",
+         "count": 20
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 61
+        }
+       ]
+      },
+      {
+       "year": 2014,
+       "count": 573,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 358
+        },
+        {
+         "value": 1600,
+         "count": 64
+        },
+        {
+         "value": 1800,
+         "count": 61
+        },
+        {
+         "value": 1798,
+         "count": 49
+        },
+        {
+         "value": 1500,
+         "count": 41
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 344
+        },
+        {
+         "value": "Auto",
+         "count": 229
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 566
+        },
+        {
+         "value": "Hybrid",
+         "count": 7
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 547
+        },
+        {
+         "value": "Station Wagon",
+         "count": 15
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 50
+        }
+       ]
+      },
+      {
+       "year": 2013,
+       "count": 451,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 326
+        },
+        {
+         "value": 1600,
+         "count": 106
+        },
+        {
+         "value": 1500,
+         "count": 19
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 340
+        },
+        {
+         "value": "Auto",
+         "count": 111
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 447
+        },
+        {
+         "value": "Hybrid",
+         "count": 4
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 439
+        },
+        {
+         "value": "Station Wagon",
+         "count": 6
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 25
+        }
+       ]
+      },
+      {
+       "year": 2012,
+       "count": 567,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 356
+        },
+        {
+         "value": 1600,
+         "count": 198
+        },
+        {
+         "value": 1500,
+         "count": 10
+        },
+        {
+         "value": 1800,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 382
+        },
+        {
+         "value": "Auto",
+         "count": 185
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 563
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 556
+        },
+        {
+         "value": "Station Wagon",
+         "count": 2
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 31
+        }
+       ]
+      },
+      {
+       "year": 2011,
+       "count": 583,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 461
+        },
+        {
+         "value": 1600,
+         "count": 95
+        },
+        {
+         "value": 1800,
+         "count": 23
+        },
+        {
+         "value": 1500,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 478
+        },
+        {
+         "value": "Auto",
+         "count": 105
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 581
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 576
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 23
+        }
+       ]
+      },
+      {
+       "year": 2010,
+       "count": 512,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 425
+        },
+        {
+         "value": 1800,
+         "count": 74
+        },
+        {
+         "value": 2000,
+         "count": 8
+        },
+        {
+         "value": 1500,
+         "count": 3
+        },
+        {
+         "value": 1600,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 448
+        },
+        {
+         "value": "Auto",
+         "count": 64
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 500
+        },
+        {
+         "value": "Diesel",
+         "count": 8
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 488
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 19
+        }
+       ]
+      },
+      {
+       "year": 2009,
+       "count": 457,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 358
+        },
+        {
+         "value": 1800,
+         "count": 79
+        },
+        {
+         "value": 2000,
+         "count": 12
+        },
+        {
+         "value": 1500,
+         "count": 7
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 396
+        },
+        {
+         "value": "Auto",
+         "count": 61
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 441
+        },
+        {
+         "value": "Diesel",
+         "count": 12
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 439
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 27
+        }
+       ]
+      },
+      {
+       "year": 2008,
+       "count": 207,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 143
+        },
+        {
+         "value": 1800,
+         "count": 28
+        },
+        {
+         "value": 2000,
+         "count": 24
+        },
+        {
+         "value": 1500,
+         "count": 8
+        },
+        {
+         "value": 1600,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 177
+        },
+        {
+         "value": "Auto",
+         "count": 30
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 182
+        },
+        {
+         "value": "Diesel",
+         "count": 24
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 199
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 21
+        }
+       ]
+      },
+      {
+       "year": 2007,
+       "count": 411,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 186
+        },
+        {
+         "value": 1500,
+         "count": 166
+        },
+        {
+         "value": 1800,
+         "count": 33
+        },
+        {
+         "value": 2000,
+         "count": 22
+        },
+        {
+         "value": 1600,
+         "count": 4
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 211
+        },
+        {
+         "value": "Auto",
+         "count": 200
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 388
+        },
+        {
+         "value": "Diesel",
+         "count": 22
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 345
+        },
+        {
+         "value": "Station Wagon",
+         "count": 30
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 192
+        }
+       ]
+      },
+      {
+       "year": 2006,
+       "count": 321,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 155
+        },
+        {
+         "value": 1500,
+         "count": 62
+        },
+        {
+         "value": 1800,
+         "count": 53
+        },
+        {
+         "value": 2000,
+         "count": 32
+        },
+        {
+         "value": 1600,
+         "count": 11
+        },
+        {
+         "value": 1496,
+         "count": 7
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 211
+        },
+        {
+         "value": "Auto",
+         "count": 110
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 285
+        },
+        {
+         "value": "Diesel",
+         "count": 32
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 273
+        },
+        {
+         "value": "Station Wagon",
+         "count": 21
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 94
+        }
+       ]
+      },
+      {
+       "year": 2005,
+       "count": 224,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 67
+        },
+        {
+         "value": 1600,
+         "count": 48
+        },
+        {
+         "value": 1800,
+         "count": 40
+        },
+        {
+         "value": 2000,
+         "count": 37
+        },
+        {
+         "value": 1500,
+         "count": 32
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 136
+        },
+        {
+         "value": "Auto",
+         "count": 88
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 183
+        },
+        {
+         "value": "Diesel",
+         "count": 37
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 214
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 51
+        }
+       ]
+      },
+      {
+       "year": 2004,
+       "count": 211,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 77
+        },
+        {
+         "value": 1600,
+         "count": 73
+        },
+        {
+         "value": 2000,
+         "count": 36
+        },
+        {
+         "value": 1500,
+         "count": 23
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 144
+        },
+        {
+         "value": "Auto",
+         "count": 67
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 169
+        },
+        {
+         "value": "Diesel",
+         "count": 35
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 197
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 41
+        }
+       ]
+      },
+      {
+       "year": 2003,
+       "count": 128,
+       "engines": [
+        {
+         "value": 1600,
+         "count": 44
+        },
+        {
+         "value": 1300,
+         "count": 31
+        },
+        {
+         "value": 2000,
+         "count": 30
+        },
+        {
+         "value": 1500,
+         "count": 18
+        },
+        {
+         "value": 1800,
+         "count": 4
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 75
+        },
+        {
+         "value": "Auto",
+         "count": 53
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 94
+        },
+        {
+         "value": "Diesel",
+         "count": 30
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 119
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 26
+        }
+       ]
+      },
+      {
+       "year": 2002,
+       "count": 60,
+       "engines": [
+        {
+         "value": 1600,
+         "count": 23
+        },
+        {
+         "value": 1500,
+         "count": 15
+        },
+        {
+         "value": 1300,
+         "count": 11
+        },
+        {
+         "value": 2000,
+         "count": 8
+        },
+        {
+         "value": 1800,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 31
+        },
+        {
+         "value": "Manual",
+         "count": 29
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 53
+        },
+        {
+         "value": "Diesel",
+         "count": 6
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 52
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 25
+        }
+       ]
+      },
+      {
+       "year": 2001,
+       "count": 103,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 33
+        },
+        {
+         "value": 2000,
+         "count": 27
+        },
+        {
+         "value": 1600,
+         "count": 21
+        },
+        {
+         "value": 1500,
+         "count": 17
+        },
+        {
+         "value": 1496,
+         "count": 3
+        },
+        {
+         "value": 1800,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 73
+        },
+        {
+         "value": "Auto",
+         "count": 30
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 76
+        },
+        {
+         "value": "Diesel",
+         "count": 26
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 92
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 29
+        }
+       ]
+      },
+      {
+       "year": 2000,
+       "count": 93,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 34
+        },
+        {
+         "value": 2000,
+         "count": 29
+        },
+        {
+         "value": 1500,
+         "count": 19
+        },
+        {
+         "value": 1600,
+         "count": 10
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 66
+        },
+        {
+         "value": "Auto",
+         "count": 27
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 66
+        },
+        {
+         "value": "Diesel",
+         "count": 25
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 74
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 26
+        }
+       ]
+      },
+      {
+       "year": 1999,
+       "count": 105,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 43
+        },
+        {
+         "value": 2000,
+         "count": 25
+        },
+        {
+         "value": 1600,
+         "count": 21
+        },
+        {
+         "value": 1500,
+         "count": 16
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 85
+        },
+        {
+         "value": "Auto",
+         "count": 20
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 74
+        },
+        {
+         "value": "Diesel",
+         "count": 25
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 89
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 17
+        }
+       ]
+      },
+      {
+       "year": 1998,
+       "count": 122,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 58
+        },
+        {
+         "value": 1600,
+         "count": 34
+        },
+        {
+         "value": 1500,
+         "count": 14
+        },
+        {
+         "value": 2000,
+         "count": 12
+        },
+        {
+         "value": 1800,
+         "count": 4
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 97
+        },
+        {
+         "value": "Auto",
+         "count": 25
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 105
+        },
+        {
+         "value": "Diesel",
+         "count": 12
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 99
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 25
+        }
+       ]
+      },
+      {
+       "year": 1997,
+       "count": 69,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 31
+        },
+        {
+         "value": 1500,
+         "count": 17
+        },
+        {
+         "value": 1600,
+         "count": 16
+        },
+        {
+         "value": 2000,
+         "count": 3
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 40
+        },
+        {
+         "value": "Auto",
+         "count": 29
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 64
+        },
+        {
+         "value": "Diesel",
+         "count": 2
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 51
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 26
+        }
+       ]
+      },
+      {
+       "year": 1996,
+       "count": 84,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 31
+        },
+        {
+         "value": 1600,
+         "count": 22
+        },
+        {
+         "value": 1500,
+         "count": 19
+        },
+        {
+         "value": 2000,
+         "count": 9
+        },
+        {
+         "value": 3000,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 56
+        },
+        {
+         "value": "Auto",
+         "count": 28
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 67
+        },
+        {
+         "value": "Diesel",
+         "count": 11
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 68
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 22
+        }
+       ]
+      },
+      {
+       "year": 1995,
+       "count": 71,
+       "engines": [
+        {
+         "value": 1500,
+         "count": 30
+        },
+        {
+         "value": 1300,
+         "count": 27
+        },
+        {
+         "value": 1600,
+         "count": 13
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 42
+        },
+        {
+         "value": "Auto",
+         "count": 29
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 69
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 65
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 38
+        }
+       ]
+      },
+      {
+       "year": 1994,
+       "count": 136,
+       "engines": [
+        {
+         "value": 1500,
+         "count": 69
+        },
+        {
+         "value": 1300,
+         "count": 44
+        },
+        {
+         "value": 1600,
+         "count": 20
+        },
+        {
+         "value": 1800,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 79
+        },
+        {
+         "value": "Auto",
+         "count": 57
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 131
+        },
+        {
+         "value": "Diesel",
+         "count": 2
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 118
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 66
+        }
+       ]
+      },
+      {
+       "year": 1993,
+       "count": 53,
+       "engines": [
+        {
+         "value": 1500,
+         "count": 26
+        },
+        {
+         "value": 1300,
+         "count": 15
+        },
+        {
+         "value": 1600,
+         "count": 10
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 27
+        },
+        {
+         "value": "Manual",
+         "count": 26
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 47
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 30
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 38
+        }
+       ]
+      },
+      {
+       "year": 1992,
+       "count": 28,
+       "engines": [
+        {
+         "value": 1500,
+         "count": 19
+        },
+        {
+         "value": 1300,
+         "count": 6
+        },
+        {
+         "value": 1600,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 14
+        },
+        {
+         "value": "Auto",
+         "count": 14
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 25
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 22
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 23
+        }
+       ]
+      },
+      {
+       "year": 1991,
+       "count": 25,
+       "engines": [
+        {
+         "value": 1500,
+         "count": 12
+        },
+        {
+         "value": 1300,
+         "count": 8
+        },
+        {
+         "value": 1600,
+         "count": 3
+        },
+        {
+         "value": 2000,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 14
+        },
+        {
+         "value": "Auto",
+         "count": 11
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 20
+        },
+        {
+         "value": "Diesel",
+         "count": 2
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 13
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 20
+        }
+       ]
+      },
+      {
+       "year": 1990,
+       "count": 33,
+       "engines": [
+        {
+         "value": 1500,
+         "count": 26
+        },
+        {
+         "value": 1300,
+         "count": 5
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 25
+        },
+        {
+         "value": "Auto",
+         "count": 8
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 27
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 26
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 21
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Suzuki",
+   "count": 4407,
+   "models": [
+    {
+     "model": "Cultus",
+     "count": 4407,
+     "years": [
+      {
+       "year": 2022,
+       "count": 162,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 162
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 132
+        },
+        {
+         "value": "Auto",
+         "count": 30
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 162
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 161
+        }
+       ],
+       "assemblies": []
+      },
+      {
+       "year": 2021,
+       "count": 346,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 346
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 258
+        },
+        {
+         "value": "Auto",
+         "count": 88
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 346
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 340
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 3
+        }
+       ]
+      },
+      {
+       "year": 2020,
+       "count": 155,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 155
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 122
+        },
+        {
+         "value": "Auto",
+         "count": 33
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 155
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 153
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 2
+        }
+       ]
+      },
+      {
+       "year": 2019,
+       "count": 237,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 237
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 191
+        },
+        {
+         "value": "Auto",
+         "count": 46
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 237
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 228
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 5
+        }
+       ]
+      },
+      {
+       "year": 2018,
+       "count": 248,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 248
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 222
+        },
+        {
+         "value": "Auto",
+         "count": 26
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 248
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 237
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 4
+        }
+       ]
+      },
+      {
+       "year": 2017,
+       "count": 256,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 255
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 255
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 255
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 252
+        }
+       ],
+       "assemblies": []
+      },
+      {
+       "year": 2016,
+       "count": 257,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 256
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 257
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 257
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 249
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 4
+        }
+       ]
+      },
+      {
+       "year": 2015,
+       "count": 228,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 228
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 228
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 228
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 219
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 2
+        }
+       ]
+      },
+      {
+       "year": 2014,
+       "count": 210,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 210
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 210
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 210
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 194
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 3
+        }
+       ]
+      },
+      {
+       "year": 2013,
+       "count": 161,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 160
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 161
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 160
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 154
+        }
+       ],
+       "assemblies": []
+      },
+      {
+       "year": 2012,
+       "count": 172,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 172
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 172
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 171
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 160
+        }
+       ],
+       "assemblies": []
+      },
+      {
+       "year": 2011,
+       "count": 169,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 169
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 169
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 168
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 154
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 5
+        }
+       ]
+      },
+      {
+       "year": 2010,
+       "count": 133,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 132
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 133
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 133
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 123
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 2
+        }
+       ]
+      },
+      {
+       "year": 2009,
+       "count": 102,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 102
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 101
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 101
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 100
+        }
+       ],
+       "assemblies": []
+      },
+      {
+       "year": 2008,
+       "count": 271,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 271
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 271
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 270
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 256
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 7
+        }
+       ]
+      },
+      {
+       "year": 2007,
+       "count": 410,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 409
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 409
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 401
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 393
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 10
+        }
+       ]
+      },
+      {
+       "year": 2006,
+       "count": 294,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 293
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 292
+        },
+        {
+         "value": "Auto",
+         "count": 2
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 284
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 283
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 9
+        }
+       ]
+      },
+      {
+       "year": 2005,
+       "count": 226,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 225
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 224
+        },
+        {
+         "value": "Auto",
+         "count": 2
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 216
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 218
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 5
+        }
+       ]
+      },
+      {
+       "year": 2004,
+       "count": 117,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 116
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 116
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 111
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 112
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 7
+        }
+       ]
+      },
+      {
+       "year": 2003,
+       "count": 97,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 95
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 97
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 88
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 92
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 3
+        }
+       ]
+      },
+      {
+       "year": 2002,
+       "count": 72,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 72
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 71
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 68
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 68
+        }
+       ],
+       "assemblies": []
+      },
+      {
+       "year": 2001,
+       "count": 48,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 48
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 48
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 45
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 43
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 2
+        }
+       ]
+      },
+      {
+       "year": 2000,
+       "count": 30,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 30
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 30
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 29
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Hatchback",
+         "count": 29
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 3
+        }
+       ]
+      },
+      {
+       "year": 1999,
+       "count": 1,
+       "engines": [],
+       "transmissions": [],
+       "fuels": [],
+       "bodyTypes": [],
+       "assemblies": []
+      },
+      {
+       "year": 1996,
+       "count": 3,
+       "engines": [
+        {
+         "value": 1000,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 2
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 3
+        }
+       ],
+       "bodyTypes": [],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 2
+        }
+       ]
+      },
+      {
+       "year": 1992,
+       "count": 1,
+       "engines": [],
+       "transmissions": [],
+       "fuels": [],
+       "bodyTypes": [],
+       "assemblies": []
+      },
+      {
+       "year": 1990,
+       "count": 1,
+       "engines": [],
+       "transmissions": [],
+       "fuels": [],
+       "bodyTypes": [],
+       "assemblies": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Honda",
+   "count": 13096,
+   "models": [
+    {
+     "model": "Civic",
+     "count": 8009,
+     "years": [
+      {
+       "year": 2022,
+       "count": 342,
+       "engines": [
+        {
+         "value": 1500,
+         "count": 155
+        },
+        {
+         "value": 1498,
+         "count": 115
+        },
+        {
+         "value": 1800,
+         "count": 72
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 342
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 342
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 338
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 10
+        }
+       ]
+      },
+      {
+       "year": 2021,
+       "count": 605,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 562
+        },
+        {
+         "value": 1500,
+         "count": 41
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 604
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 605
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 592
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 24
+        }
+       ]
+      },
+      {
+       "year": 2020,
+       "count": 337,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 285
+        },
+        {
+         "value": 1500,
+         "count": 52
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 337
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 337
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 332
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 9
+        }
+       ]
+      },
+      {
+       "year": 2019,
+       "count": 350,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 323
+        },
+        {
+         "value": 1500,
+         "count": 26
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 350
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 350
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 345
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 10
+        }
+       ]
+      },
+      {
+       "year": 2018,
+       "count": 669,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 660
+        },
+        {
+         "value": 1000,
+         "count": 4
+        },
+        {
+         "value": 1500,
+         "count": 3
+        },
+        {
+         "value": 998,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 665
+        },
+        {
+         "value": "Manual",
+         "count": 4
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 669
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 650
+        },
+        {
+         "value": "Hatchback",
+         "count": 4
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 26
+        }
+       ]
+      },
+      {
+       "year": 2017,
+       "count": 643,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 604
+        },
+        {
+         "value": 1500,
+         "count": 36
+        },
+        {
+         "value": 1000,
+         "count": 3
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 642
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 643
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 632
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 33
+        }
+       ]
+      },
+      {
+       "year": 2016,
+       "count": 360,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 261
+        },
+        {
+         "value": 1500,
+         "count": 99
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 346
+        },
+        {
+         "value": "Manual",
+         "count": 14
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 360
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 353
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 14
+        }
+       ]
+      },
+      {
+       "year": 2015,
+       "count": 230,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 230
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 212
+        },
+        {
+         "value": "Manual",
+         "count": 18
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 230
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 225
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 9
+        }
+       ]
+      },
+      {
+       "year": 2014,
+       "count": 312,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 310
+        },
+        {
+         "value": 1300,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 276
+        },
+        {
+         "value": "Manual",
+         "count": 36
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 312
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 303
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 13
+        }
+       ]
+      },
+      {
+       "year": 2013,
+       "count": 385,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 383
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 328
+        },
+        {
+         "value": "Manual",
+         "count": 57
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 384
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 377
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 19
+        }
+       ]
+      },
+      {
+       "year": 2012,
+       "count": 223,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 218
+        },
+        {
+         "value": 1300,
+         "count": 4
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 176
+        },
+        {
+         "value": "Manual",
+         "count": 47
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 222
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 214
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 10
+        }
+       ]
+      },
+      {
+       "year": 2011,
+       "count": 261,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 261
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 195
+        },
+        {
+         "value": "Manual",
+         "count": 66
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 261
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 250
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 14
+        }
+       ]
+      },
+      {
+       "year": 2010,
+       "count": 274,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 266
+        },
+        {
+         "value": 1300,
+         "count": 8
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 205
+        },
+        {
+         "value": "Manual",
+         "count": 69
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 274
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 264
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 27
+        }
+       ]
+      },
+      {
+       "year": 2009,
+       "count": 211,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 209
+        },
+        {
+         "value": 1300,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 153
+        },
+        {
+         "value": "Manual",
+         "count": 58
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 210
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 208
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 15
+        }
+       ]
+      },
+      {
+       "year": 2008,
+       "count": 218,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 211
+        },
+        {
+         "value": 1300,
+         "count": 7
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 149
+        },
+        {
+         "value": "Manual",
+         "count": 69
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 216
+        },
+        {
+         "value": "Hybrid",
+         "count": 2
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 214
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 19
+        }
+       ]
+      },
+      {
+       "year": 2007,
+       "count": 278,
+       "engines": [
+        {
+         "value": 1800,
+         "count": 247
+        },
+        {
+         "value": 1300,
+         "count": 24
+        },
+        {
+         "value": 1500,
+         "count": 3
+        },
+        {
+         "value": 1600,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 190
+        },
+        {
+         "value": "Manual",
+         "count": 88
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 272
+        },
+        {
+         "value": "Hybrid",
+         "count": 4
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 261
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 36
+        }
+       ]
+      },
+      {
+       "year": 2006,
+       "count": 264,
+       "engines": [
+        {
+         "value": 1600,
+         "count": 100
+        },
+        {
+         "value": 1500,
+         "count": 86
+        },
+        {
+         "value": 1800,
+         "count": 66
+        },
+        {
+         "value": 1300,
+         "count": 12
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 135
+        },
+        {
+         "value": "Auto",
+         "count": 129
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 261
+        },
+        {
+         "value": "Hybrid",
+         "count": 2
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 257
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 27
+        }
+       ]
+      },
+      {
+       "year": 2005,
+       "count": 467,
+       "engines": [
+        {
+         "value": 1500,
+         "count": 246
+        },
+        {
+         "value": 1600,
+         "count": 217
+        },
+        {
+         "value": 1300,
+         "count": 3
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 238
+        },
+        {
+         "value": "Manual",
+         "count": 229
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 465
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 454
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 35
+        }
+       ]
+      },
+      {
+       "year": 2004,
+       "count": 298,
+       "engines": [
+        {
+         "value": 1600,
+         "count": 161
+        },
+        {
+         "value": 1500,
+         "count": 135
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 163
+        },
+        {
+         "value": "Manual",
+         "count": 135
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 295
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 290
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 27
+        }
+       ]
+      },
+      {
+       "year": 2003,
+       "count": 145,
+       "engines": [
+        {
+         "value": 1600,
+         "count": 104
+        },
+        {
+         "value": 1500,
+         "count": 39
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 76
+        },
+        {
+         "value": "Auto",
+         "count": 69
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 144
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 138
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 14
+        }
+       ]
+      },
+      {
+       "year": 2002,
+       "count": 145,
+       "engines": [
+        {
+         "value": 1600,
+         "count": 99
+        },
+        {
+         "value": 1500,
+         "count": 42
+        },
+        {
+         "value": 1800,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 73
+        },
+        {
+         "value": "Manual",
+         "count": 72
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 140
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 134
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 23
+        }
+       ]
+      },
+      {
+       "year": 2001,
+       "count": 110,
+       "engines": [
+        {
+         "value": 1600,
+         "count": 73
+        },
+        {
+         "value": 1500,
+         "count": 37
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 70
+        },
+        {
+         "value": "Manual",
+         "count": 40
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 109
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 106
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 11
+        }
+       ]
+      },
+      {
+       "year": 2000,
+       "count": 160,
+       "engines": [
+        {
+         "value": 1600,
+         "count": 94
+        },
+        {
+         "value": 1500,
+         "count": 61
+        },
+        {
+         "value": 1300,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 95
+        },
+        {
+         "value": "Auto",
+         "count": 65
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 156
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 151
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 18
+        }
+       ]
+      },
+      {
+       "year": 1999,
+       "count": 101,
+       "engines": [
+        {
+         "value": 1600,
+         "count": 61
+        },
+        {
+         "value": 1500,
+         "count": 37
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 55
+        },
+        {
+         "value": "Auto",
+         "count": 46
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 96
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 94
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 15
+        }
+       ]
+      },
+      {
+       "year": 1998,
+       "count": 109,
+       "engines": [
+        {
+         "value": 1600,
+         "count": 57
+        },
+        {
+         "value": 1500,
+         "count": 46
+        },
+        {
+         "value": 1700,
+         "count": 2
+        },
+        {
+         "value": 1300,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 70
+        },
+        {
+         "value": "Auto",
+         "count": 39
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 108
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 96
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 11
+        }
+       ]
+      },
+      {
+       "year": 1997,
+       "count": 111,
+       "engines": [
+        {
+         "value": 1600,
+         "count": 64
+        },
+        {
+         "value": 1500,
+         "count": 43
+        },
+        {
+         "value": 2200,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 71
+        },
+        {
+         "value": "Auto",
+         "count": 40
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 109
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 90
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 19
+        }
+       ]
+      },
+      {
+       "year": 1996,
+       "count": 138,
+       "engines": [
+        {
+         "value": 1500,
+         "count": 72
+        },
+        {
+         "value": 1600,
+         "count": 61
+        },
+        {
+         "value": 1300,
+         "count": 5
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 110
+        },
+        {
+         "value": "Auto",
+         "count": 28
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 133
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 126
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 21
+        }
+       ]
+      },
+      {
+       "year": 1995,
+       "count": 197,
+       "engines": [
+        {
+         "value": 1500,
+         "count": 166
+        },
+        {
+         "value": 1600,
+         "count": 14
+        },
+        {
+         "value": 1300,
+         "count": 9
+        },
+        {
+         "value": 1800,
+         "count": 3
+        },
+        {
+         "value": 1700,
+         "count": 3
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 187
+        },
+        {
+         "value": "Auto",
+         "count": 10
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 193
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 155
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 33
+        }
+       ]
+      },
+      {
+       "year": 1994,
+       "count": 19,
+       "engines": [
+        {
+         "value": 1500,
+         "count": 13
+        },
+        {
+         "value": 1600,
+         "count": 3
+        },
+        {
+         "value": 1300,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 18
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 19
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 14
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 5
+        }
+       ]
+      },
+      {
+       "year": 1993,
+       "count": 6,
+       "engines": [
+        {
+         "value": 1500,
+         "count": 4
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 4
+        },
+        {
+         "value": "Auto",
+         "count": 2
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 6
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 4
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 4
+        }
+       ]
+      },
+      {
+       "year": 1992,
+       "count": 16,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 5
+        },
+        {
+         "value": 1500,
+         "count": 5
+        },
+        {
+         "value": 1600,
+         "count": 3
+        },
+        {
+         "value": 1200,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 14
+        },
+        {
+         "value": "Auto",
+         "count": 2
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 16
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 8
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 9
+        }
+       ]
+      },
+      {
+       "year": 1991,
+       "count": 6,
+       "engines": [
+        {
+         "value": 1200,
+         "count": 2
+        },
+        {
+         "value": 1500,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 5
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 6
+        }
+       ],
+       "bodyTypes": [],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 6
+        }
+       ]
+      },
+      {
+       "year": 1990,
+       "count": 19,
+       "engines": [
+        {
+         "value": 1600,
+         "count": 6
+        },
+        {
+         "value": 1300,
+         "count": 5
+        },
+        {
+         "value": 1500,
+         "count": 4
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 17
+        },
+        {
+         "value": "Auto",
+         "count": 2
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 17
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 4
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 15
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "model": "City",
+     "count": 5087,
+     "years": [
+      {
+       "year": 2022,
+       "count": 442,
+       "engines": [
+        {
+         "value": 1200,
+         "count": 184
+        },
+        {
+         "value": 1500,
+         "count": 134
+        },
+        {
+         "value": 1497,
+         "count": 123
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 367
+        },
+        {
+         "value": "Manual",
+         "count": 75
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 442
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Compact Sedan",
+         "count": 436
+        },
+        {
+         "value": "Sedan",
+         "count": 3
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 6
+        }
+       ]
+      },
+      {
+       "year": 2021,
+       "count": 327,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 111
+        },
+        {
+         "value": 1200,
+         "count": 102
+        },
+        {
+         "value": 1500,
+         "count": 82
+        },
+        {
+         "value": 1497,
+         "count": 32
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 212
+        },
+        {
+         "value": "Manual",
+         "count": 115
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 327
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 167
+        },
+        {
+         "value": "Compact Sedan",
+         "count": 157
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 7
+        }
+       ]
+      },
+      {
+       "year": 2020,
+       "count": 244,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 147
+        },
+        {
+         "value": 1500,
+         "count": 97
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 139
+        },
+        {
+         "value": "Manual",
+         "count": 105
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 244
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 243
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 3
+        }
+       ]
+      },
+      {
+       "year": 2019,
+       "count": 382,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 259
+        },
+        {
+         "value": 1500,
+         "count": 123
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 236
+        },
+        {
+         "value": "Manual",
+         "count": 146
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 382
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 375
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 8
+        }
+       ]
+      },
+      {
+       "year": 2018,
+       "count": 574,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 421
+        },
+        {
+         "value": 1500,
+         "count": 153
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 299
+        },
+        {
+         "value": "Auto",
+         "count": 275
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 574
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 570
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 8
+        }
+       ]
+      },
+      {
+       "year": 2017,
+       "count": 361,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 283
+        },
+        {
+         "value": 1500,
+         "count": 78
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 254
+        },
+        {
+         "value": "Auto",
+         "count": 107
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 361
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 358
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 6
+        }
+       ]
+      },
+      {
+       "year": 2016,
+       "count": 361,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 304
+        },
+        {
+         "value": 1500,
+         "count": 56
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 263
+        },
+        {
+         "value": "Auto",
+         "count": 98
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 361
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 358
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 8
+        }
+       ]
+      },
+      {
+       "year": 2015,
+       "count": 299,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 238
+        },
+        {
+         "value": 1500,
+         "count": 58
+        },
+        {
+         "value": 1800,
+         "count": 3
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 228
+        },
+        {
+         "value": "Auto",
+         "count": 71
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 299
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 291
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 8
+        }
+       ]
+      },
+      {
+       "year": 2014,
+       "count": 259,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 176
+        },
+        {
+         "value": 1500,
+         "count": 83
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 201
+        },
+        {
+         "value": "Auto",
+         "count": 58
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 259
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 254
+        }
+       ],
+       "assemblies": []
+      },
+      {
+       "year": 2013,
+       "count": 178,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 124
+        },
+        {
+         "value": 1500,
+         "count": 54
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 135
+        },
+        {
+         "value": "Auto",
+         "count": 43
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 178
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 173
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 6
+        }
+       ]
+      },
+      {
+       "year": 2012,
+       "count": 105,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 105
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 85
+        },
+        {
+         "value": "Auto",
+         "count": 20
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 105
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 103
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 5
+        }
+       ]
+      },
+      {
+       "year": 2011,
+       "count": 116,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 116
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 96
+        },
+        {
+         "value": "Auto",
+         "count": 20
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 116
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 112
+        }
+       ],
+       "assemblies": []
+      },
+      {
+       "year": 2010,
+       "count": 132,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 132
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 104
+        },
+        {
+         "value": "Auto",
+         "count": 28
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 132
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 123
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 11
+        }
+       ]
+      },
+      {
+       "year": 2009,
+       "count": 87,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 87
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 64
+        },
+        {
+         "value": "Auto",
+         "count": 23
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 87
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 84
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 4
+        }
+       ]
+      },
+      {
+       "year": 2008,
+       "count": 92,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 91
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 66
+        },
+        {
+         "value": "Auto",
+         "count": 26
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 92
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 90
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 6
+        }
+       ]
+      },
+      {
+       "year": 2007,
+       "count": 154,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 142
+        },
+        {
+         "value": 1500,
+         "count": 12
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 110
+        },
+        {
+         "value": "Auto",
+         "count": 44
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 154
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 138
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 7
+        }
+       ]
+      },
+      {
+       "year": 2006,
+       "count": 221,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 206
+        },
+        {
+         "value": 1500,
+         "count": 15
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 165
+        },
+        {
+         "value": "Auto",
+         "count": 56
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 221
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 209
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 13
+        }
+       ]
+      },
+      {
+       "year": 2005,
+       "count": 209,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 205
+        },
+        {
+         "value": 1500,
+         "count": 4
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 152
+        },
+        {
+         "value": "Auto",
+         "count": 57
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 209
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 193
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 7
+        }
+       ]
+      },
+      {
+       "year": 2004,
+       "count": 107,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 105
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 82
+        },
+        {
+         "value": "Auto",
+         "count": 25
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 107
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 102
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 6
+        }
+       ]
+      },
+      {
+       "year": 2003,
+       "count": 82,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 69
+        },
+        {
+         "value": 1500,
+         "count": 12
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 62
+        },
+        {
+         "value": "Auto",
+         "count": 20
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 82
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 78
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 6
+        }
+       ]
+      },
+      {
+       "year": 2002,
+       "count": 76,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 52
+        },
+        {
+         "value": 1500,
+         "count": 23
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 60
+        },
+        {
+         "value": "Auto",
+         "count": 16
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 74
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 65
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 6
+        }
+       ]
+      },
+      {
+       "year": 2001,
+       "count": 105,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 67
+        },
+        {
+         "value": 1500,
+         "count": 38
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 80
+        },
+        {
+         "value": "Auto",
+         "count": 25
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 104
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 95
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 13
+        }
+       ]
+      },
+      {
+       "year": 2000,
+       "count": 61,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 46
+        },
+        {
+         "value": 1500,
+         "count": 15
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 50
+        },
+        {
+         "value": "Auto",
+         "count": 11
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 61
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 53
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 3
+        }
+       ]
+      },
+      {
+       "year": 1999,
+       "count": 36,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 33
+        },
+        {
+         "value": 1500,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 35
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 36
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 31
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 4
+        }
+       ]
+      },
+      {
+       "year": 1998,
+       "count": 48,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 35
+        },
+        {
+         "value": 1500,
+         "count": 12
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 43
+        },
+        {
+         "value": "Auto",
+         "count": 5
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 48
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 42
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 7
+        }
+       ]
+      },
+      {
+       "year": 1997,
+       "count": 28,
+       "engines": [
+        {
+         "value": 1300,
+         "count": 22
+        },
+        {
+         "value": 1500,
+         "count": 3
+        },
+        {
+         "value": 1600,
+         "count": 2
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Manual",
+         "count": 26
+        },
+        {
+         "value": "Auto",
+         "count": 2
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 24
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Sedan",
+         "count": 20
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 6
+        }
+       ]
+      },
+      {
+       "year": 1993,
+       "count": 1,
+       "engines": [],
+       "transmissions": [],
+       "fuels": [],
+       "bodyTypes": [],
+       "assemblies": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "make": "Hyundai",
+   "count": 298,
+   "models": [
+    {
+     "model": "Tucson",
+     "count": 298,
+     "years": [
+      {
+       "year": 2022,
+       "count": 171,
+       "engines": [
+        {
+         "value": 1999,
+         "count": 100
+        },
+        {
+         "value": 2000,
+         "count": 70
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 171
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 171
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Suv",
+         "count": 168
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 18
+        }
+       ]
+      },
+      {
+       "year": 2021,
+       "count": 105,
+       "engines": [
+        {
+         "value": 1999,
+         "count": 77
+        },
+        {
+         "value": 2000,
+         "count": 28
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 105
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 105
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Suv",
+         "count": 104
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 19
+        }
+       ]
+      },
+      {
+       "year": 2020,
+       "count": 22,
+       "engines": [
+        {
+         "value": 1999,
+         "count": 13
+        },
+        {
+         "value": 2000,
+         "count": 9
+        }
+       ],
+       "transmissions": [
+        {
+         "value": "Auto",
+         "count": 22
+        }
+       ],
+       "fuels": [
+        {
+         "value": "Petrol",
+         "count": 22
+        }
+       ],
+       "bodyTypes": [
+        {
+         "value": "Suv",
+         "count": 21
+        }
+       ],
+       "assemblies": [
+        {
+         "value": "Imported",
+         "count": 2
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

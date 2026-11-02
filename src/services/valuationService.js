@@ -1,4 +1,5 @@
 const axios = require('axios')
+const { isConfigured, serviceBase, serviceHeaders } = require('./modelServiceClient')
 
 const text = value => String(value || '').trim()
 const number = value => {
@@ -40,21 +41,13 @@ const validateInput = payload => {
   return { input, errors }
 }
 
-const serviceBase = () => String(process.env.ML_SERVICE_URL || process.env.ML_API_URL || 'http://127.0.0.1:8000')
-  .replace(/\/predict\/?$/, '')
-  .replace(/\/$/, '')
-
-const serviceHeaders = () => process.env.ML_SERVICE_KEY
-  ? { 'X-Service-Key': process.env.ML_SERVICE_KEY }
-  : undefined
-
 const predictionUrl = () => {
   const configured = text(process.env.ML_API_URL)
   return /\/predict\/?$/.test(configured) ? configured.replace(/\/$/, '') : `${serviceBase()}/predict`
 }
 
 const modelOptions = async () => {
-  if (!process.env.ML_API_URL && !process.env.ML_SERVICE_URL) {
+  if (!isConfigured()) {
     return { available: false, message: 'The trained model service is not configured.' }
   }
   try {
@@ -69,7 +62,7 @@ const modelOptions = async () => {
 }
 
 const modelPrediction = async input => {
-  if (!process.env.ML_API_URL && !process.env.ML_SERVICE_URL) return null
+  if (!isConfigured()) return null
   let response
   try {
     response = await axios.post(predictionUrl(), input, {

@@ -1,7 +1,20 @@
-const test = require('node:test')
+const { after, before, test } = require('node:test')
 const assert = require('node:assert/strict')
 const { catalog, normalizeForMl, specification, validateConfiguration } = require('../src/data/vehicleCatalog')
-const { validateDatasetConfiguration, vehicleOptions } = require('../src/services/vehicleOptionsService')
+const { startFakeModelService, freshVehicleOptions } = require('./helpers/fakeModelService')
+
+let modelService
+let validateDatasetConfiguration
+let vehicleOptions
+
+before(async () => {
+  modelService = await startFakeModelService()
+  process.env.ML_API_URL = ''
+  process.env.ML_SERVICE_URL = modelService.url
+  ;({ service: { validateDatasetConfiguration, vehicleOptions } } = freshVehicleOptions())
+})
+
+after(() => modelService.close())
 
 const base = {
   make: 'Suzuki', model: 'Cultus', year: 2021, variant: 'VXR', engineCapacity: 998,
@@ -34,22 +47,22 @@ test('preserves catalog terminology while adapting known ML labels', () => {
   assert.equal(normalizeForMl({ make: 'Suzuki', model: 'Wagon R', year: 2022 }).model, 'Wagon')
 })
 
-test('merges dataset coverage with verified catalog coverage without hiding Hyundai', () => {
-  const root = vehicleOptions()
+test('merges dataset coverage with verified catalog coverage without hiding Hyundai', async () => {
+  const root = await vehicleOptions()
   assert.ok(root.makes.includes('Hyundai'))
-  const hyundai = vehicleOptions({ make: 'Hyundai' })
+  const hyundai = await vehicleOptions({ make: 'Hyundai' })
   assert.ok(hyundai.models.includes('Tucson'))
-  const tucson = vehicleOptions({ make: 'Hyundai', model: 'Tucson', year: 2021 })
+  const tucson = await vehicleOptions({ make: 'Hyundai', model: 'Tucson', year: 2021 })
   assert.equal(tucson.coverageLevel, 'dataset')
   assert.equal(tucson.variants.length, 0)
   assert.ok(tucson.engines.length)
   const manualVariantInput = { make: 'Hyundai', model: 'Tucson', year: 2021, variant: 'GL', engineCapacity: tucson.engines[0], transmission: tucson.transmissions[0], fuelType: tucson.fuels[0], bodyType: tucson.bodyTypes[0], assemblyType: tucson.assemblies[0] }
   assert.deepEqual(validateConfiguration(manualVariantInput), {})
-  assert.deepEqual(validateDatasetConfiguration(manualVariantInput), {})
+  assert.deepEqual(await validateDatasetConfiguration(manualVariantInput), {})
 })
 
-test('rejects a vehicle absent from both the trained-data index and verified catalog', () => {
-  const errors = validateDatasetConfiguration({ make: 'Example Motors', model: 'Imaginary', year: 2021 })
+test('rejects a vehicle absent from both the trained-data index and verified catalog', async () => {
+  const errors = await validateDatasetConfiguration({ make: 'Example Motors', model: 'Imaginary', year: 2021 })
   assert.ok(errors.model)
 })
 
