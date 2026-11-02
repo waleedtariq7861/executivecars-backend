@@ -119,10 +119,10 @@ const sendBookingConfirmationEmail = async (to, name, date, branch) => {
   })
 }
 
-const sendPasswordResetEmail = async (to, resetUrl) => {
+const sendPasswordResetCodeEmail = async (to, { name, code }) => {
   await sendEmail({
     to,
-    subject: 'Reset your Executive Cars password',
+    subject: 'Your Executive Cars password reset code',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #0f172a;">
         <div style="background: #0f172a; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
@@ -130,9 +130,11 @@ const sendPasswordResetEmail = async (to, resetUrl) => {
         </div>
         <div style="background: #f8fafc; padding: 32px; border: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;">
           <h2 style="margin-top: 0;">Reset your password</h2>
-          <p style="color: #64748b; line-height: 1.6;">Use the button below within 30 minutes. If you did not request a reset, ignore this email.</p>
-          <a href="${resetUrl}" style="display: inline-block; background: #2563eb; color: white; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: 700; margin: 12px 0;">Choose a new password</a>
-          <p style="color: #94a3b8; font-size: 12px; word-break: break-all;">${resetUrl}</p>
+          <p style="color: #64748b; line-height: 1.6;">Hi ${escapeHtml(name || 'there')}, enter this code on Executive Cars to choose a new password.</p>
+          <div style="background: #fff; border: 2px solid #3b82f6; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+            <span style="font-size: 40px; font-weight: 900; letter-spacing: 12px; color: #1e40af;">${escapeHtml(code)}</span>
+          </div>
+          <p style="color: #94a3b8; font-size: 13px;">This code expires in <strong>10 minutes</strong>. Do not share it with anyone. If you did not ask to reset your password, ignore this email: your password has not changed.</p>
         </div>
       </div>
     `,
@@ -145,7 +147,7 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character =>
 // signs anyone in, only the way to start a reset.
 const sendPasswordChangedEmail = async (to, { name, reason = 'change', at = new Date() } = {}) => {
   const clientUrl = String(process.env.CLIENT_URL || 'http://127.0.0.1:5173').replace(/\/$/, '')
-  const how = reason === 'reset' ? 'using a password reset link' : 'from your account settings'
+  const how = reason === 'reset' ? 'using a password reset code' : 'from your account settings'
   const when = new Date(at).toUTCString()
   await sendEmail({
     to,
@@ -191,4 +193,4 @@ const sendInvoiceEmail = async (to, invoice) => {
   })
 }
 
-module.exports = { sendOTPEmail, sendVerificationCodeEmail, sendBookingConfirmationEmail, sendPasswordResetEmail, sendPasswordChangedEmail, sendInvoiceEmail }
+module.exports = { sendOTPEmail, sendVerificationCodeEmail, sendBookingConfirmationEmail, sendPasswordResetCodeEmail, sendPasswordChangedEmail, sendInvoiceEmail }
