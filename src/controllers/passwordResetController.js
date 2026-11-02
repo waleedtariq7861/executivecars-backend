@@ -3,6 +3,7 @@ const Member = require('../models/Member')
 const { handleControllerError } = require('../utils/http')
 const { isDemoMode } = require('../config/runtime')
 const email = require('../utils/email')
+const { recordAuthEvent } = require('../utils/authEvents')
 const { sendInBackground } = require('../utils/background')
 const sessions = require('../utils/sessions')
 const loginThrottle = require('../utils/loginThrottle')
@@ -39,7 +40,12 @@ const requestPasswordReset = async (req, res) => {
     if (found && await consumeResetRequest(found.accountModel, found.account._id)) {
       const { accountModel, account } = found
       const code = await resetCode.issueCode(accountModel, account)
-      sendInBackground('Password reset', () => email.sendPasswordResetCodeEmail(account.email, { name: account.name, code }))
+      await recordAuthEvent('reset_requested', { req, accountModel, accountId: account._id, email: account.email })
+      sendInBackground(
+        'Password reset',
+        () => email.sendPasswordResetCodeEmail(account.email, { name: account.name, code }),
+        () => recordAuthEvent('mail_failed', { accountModel, accountId: account._id, email: account.email, detail: 'password reset code' }),
+      )
       if (isDemoMode() && process.env.EMAIL_DELIVERY_MODE === 'development') developmentCode = code
     }
 
@@ -80,7 +86,12 @@ const resetPassword = async (req, res) => {
     // Whoever knew the old password may still hold a session: end them all after a reset.
     await sessions.revokeAccountSessions({ accountModel, accountId: account._id, reason: 'password_reset', io: req.app.get('io') })
     await loginThrottle.clearEmail(accountModel, account.email)
-    sendInBackground('Password changed', () => email.sendPasswordChangedEmail(account.email, { name: account.name, reason: 'reset' }))
+    await recordAuthEvent('reset_completed', { req, accountModel, accountId: account._id, email: account.email })
+    sendInBackground(
+      'Password changed',
+      () => email.sendPasswordChangedEmail(account.email, { name: account.name, reason: 'reset' }),
+      () => recordAuthEvent('mail_failed', { accountModel, accountId: account._id, email: account.email, detail: 'password changed notice' }),
+    )
     res.json({ message: 'Password reset successfully. You can now sign in.' })
   } catch (error) {
     handleControllerError(res, error, 'Could not reset password')

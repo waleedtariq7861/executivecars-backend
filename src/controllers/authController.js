@@ -2,6 +2,8 @@ const Admin  = require('../models/Admin')
 const Member = require('../models/Member')
 const { handleControllerError } = require('../utils/http')
 const email = require('../utils/email')
+const { sendInBackground } = require('../utils/background')
+const { recordAuthEvent } = require('../utils/authEvents')
 const { attachSession, clearSession, csrfTokenForSession, sessionTokenFromRequest } = require('../utils/session')
 const sessions = require('../utils/sessions')
 const loginThrottle = require('../utils/loginThrottle')
@@ -92,10 +94,13 @@ const adminLogin = async (req, res) => {
     const valid = await verifyWithEqualCost(password, admin?.password)
     if (!admin || !valid) {
       await loginThrottle.recordFailure('admin', who)
+      // Only attempts on a real account are logged: a flood of guesses at made-up addresses must not fill the audit trail.
+      if (admin) await recordAuthEvent('login_failure', { req, accountModel: 'admin', accountId: admin._id, email })
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
     await loginThrottle.recordSuccess('admin', who)
+    await recordAuthEvent('login_success', { req, accountModel: 'admin', accountId: admin._id, email })
     await startSession(req, res, {
       account: admin, accountModel: 'admin', role: 'admin',
       user: { id: admin._id, name: admin.name, email: admin.email, role: 'admin' },
@@ -126,6 +131,7 @@ const accountRegister = async (req, res) => {
     if (exists) return res.status(409).json({ message: 'Email already registered' })
 
     const account = await Member.create({ name, email, phone, password, role: 'user' })
+    await recordAuthEvent('registered', { req, accountModel: 'member', accountId: account._id, email })
     // The sign-up response says whether the code went out, so the screen can offer a resend instead of failing silently.
     const verification = await sendVerificationCode(account)
     await startSession(req, res, { account, accountModel: 'member', role: 'user', user: accountPayload(account), status: 201, extra: { verification } })
@@ -150,10 +156,12 @@ const accountLogin = async (req, res) => {
     const valid = await verifyWithEqualCost(password, account?.password)
     if (!account || !valid) {
       await loginThrottle.recordFailure('member', who)
+      if (account) await recordAuthEvent('login_failure', { req, accountModel: 'member', accountId: account._id, email })
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
     await loginThrottle.recordSuccess('member', who)
+    await recordAuthEvent('login_success', { req, accountModel: 'member', accountId: account._id, email })
 
     await expireMembershipIfNeeded(account)
 
@@ -190,11 +198,12 @@ const changePassword = async (req, res) => {
     await sessions.revokeAccountSessions({
       accountModel: req.accountModel, accountId: fresh._id, exceptId: req.session?._id, reason: 'password_changed', io: req.app.get('io'),
     })
-    try {
-      email.sendPasswordChangedEmail(fresh.email, { name: fresh.name, reason: 'change' })?.catch?.(error => console.error('Password changed email delivery failed:', error.message))
-    } catch (error) {
-      console.error('Password changed email delivery failed:', error.message)
-    }
+    await recordAuthEvent('password_changed', { req, accountModel: req.accountModel, accountId: fresh._id, email: fresh.email, detail: 'from account settings' })
+    sendInBackground(
+      'Password changed',
+      () => email.sendPasswordChangedEmail(fresh.email, { name: fresh.name, reason: 'change' }),
+      () => recordAuthEvent('mail_failed', { accountModel: req.accountModel, accountId: fresh._id, email: fresh.email, detail: 'password changed notice' }),
+    )
     res.json({ message: 'Password updated successfully' })
   } catch (err) {
     handleControllerError(res, err, 'Password update failed')
@@ -217,7 +226,11 @@ const logout = async (req, res) => {
     const token = sessionTokenFromRequest(req)
     if (token) {
       const { session } = await sessions.findSession(token)
-      if (session) await sessions.revokeSession(session, 'logout', req.app.get('io'))
+      if (session) {
+        const wasLive = !session.revokedAt
+        await sessions.revokeSession(session, 'logout', req.app.get('io'))
+        if (wasLive) await recordAuthEvent('logout', { req, accountModel: session.accountModel, accountId: session.accountId })
+      }
     }
     clearSession(res)
     res.set('Cache-Control', 'no-store')
