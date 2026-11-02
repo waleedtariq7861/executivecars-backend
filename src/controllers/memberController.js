@@ -5,11 +5,10 @@ const Car     = require('../models/Car')
 const Product = require('../models/Product')
 const { handleControllerError } = require('../utils/http')
 const { validateProfileInput } = require('../utils/inputValidation')
-const { toInspectionSafeObject } = require('../utils/inspectionReport')
 const { getMemberAuctionState, wonAuctionFilter } = require('../utils/auctionOutcome')
+const { toPublicProductObject, toMemberAuctionObject } = require('../utils/publicDto')
 
-const toSavedProductObject = product => toInspectionSafeObject(product, { reportPath: `/documents/products/${product._id}/report` })
-const toWonAuctionObject = car => toInspectionSafeObject(car, { reportPath: `/documents/auctions/${car._id}/report` })
+const toSavedProductObject = toPublicProductObject
 
 const requireCustomerAccount = (req, res) => {
   if (req.accountRole !== 'user' || req.accountModel !== 'member') {
@@ -99,10 +98,12 @@ const getMyBids = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean()
     const now = Date.now()
-    res.json(bids.map(bid => ({
-      ...bid,
-      auctionState: getMemberAuctionState(bid.carId, req.user._id, now),
-    })))
+    res.json(bids.map(bid => {
+      const auctionState = getMemberAuctionState(bid.carId, req.user._id, now)
+      // The reserve price was needed to work out the state; the bidder never receives it.
+      if (bid.carId) delete bid.carId.reservePrice
+      return { ...bid, auctionState }
+    }))
   } catch (err) {
     handleControllerError(res, err, 'Could not load bids')
   }
@@ -110,8 +111,8 @@ const getMyBids = async (req, res) => {
 
 const getWonCars = async (req, res) => {
   try {
-    const wonCars = await Car.find(wonAuctionFilter(req.user._id))
-    res.json(wonCars.map(toWonAuctionObject))
+    const wonCars = await Car.find(wonAuctionFilter(req.user._id)).populate('highestBidder', 'name')
+    res.json(wonCars.map(car => toMemberAuctionObject(car, req.user._id)))
   } catch (err) {
     handleControllerError(res, err, 'Could not load won cars')
   }

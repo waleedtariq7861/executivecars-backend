@@ -44,7 +44,8 @@ const fileFilter = (req, file, callback) => {
   callback(error, allowed)
 }
 
-const options = storage => ({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024, files: 7 } })
+// The number of files a request may carry is what its form can legitimately hold, not a shared maximum.
+const options = (storage, fields) => ({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024, files: fields.reduce((total, field) => total + field.maxCount, 0) } })
 const carFields = [{ name: 'images', maxCount: 6 }, { name: 'report', maxCount: 1 }]
 const documentFields = [{ name: 'cnicImage', maxCount: 1 }, { name: 'regDoc', maxCount: 1 }]
 
@@ -105,7 +106,7 @@ const uploadBuffer = (file, uploadOptions) => new Promise((resolve, reject) => {
 })
 
 const cloudinaryMiddleware = (fields, getOptions) => {
-  const parse = multer(options(multer.memoryStorage())).fields(fields)
+  const parse = multer(options(multer.memoryStorage(), fields)).fields(fields)
   return (req, res, next) => parse(req, res, async parseError => {
     if (parseError) return next(parseError)
     try {
@@ -123,7 +124,7 @@ const cloudinaryMiddleware = (fields, getOptions) => {
 }
 
 const localMiddleware = fields => {
-  const parse = multer(options(localStorage)).fields(fields)
+  const parse = multer(options(localStorage, fields)).fields(fields)
   return (req, res, next) => parse(req, res, async parseError => {
     if (parseError) return next(parseError)
     const files = Object.values(req.files || {}).flat()
@@ -156,11 +157,13 @@ const docUpload = usingCloudinary
     }))
   : localMiddleware(documentFields)
 
-const uploadedFileUrl = (req, file) => {
+// A public image is addressed by a path on this site, never by a URL built from the request's Host header (which the
+// sender controls and which would then be stored). Cloudinary uploads already carry their own HTTPS address.
+const uploadedFileUrl = file => {
   if (!file) return ''
   if (file.fieldname !== 'images') throw Object.assign(new Error('Private documents cannot be exposed as permanent URLs'), { status: 500 })
   if (/^https?:\/\//i.test(file.path || '')) return file.path
-  return `${req.protocol}://${req.get('host')}/uploads/images/${encodeURIComponent(file.filename)}`
+  return `/uploads/images/${encodeURIComponent(file.filename)}`
 }
 
 const storedPrivateAsset = file => file ? {

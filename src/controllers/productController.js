@@ -1,11 +1,16 @@
 const Product = require('../models/Product')
-const { escapeRegex, handleControllerError } = require('../utils/http')
+const { escapeRegex, handleControllerError, queryText } = require('../utils/http')
 const { strictNumber } = require('../utils/inputValidation')
-const { toInspectionSafeObject } = require('../utils/inspectionReport')
+const { toPublicProductObject } = require('../utils/publicDto')
 
 const getProducts = async (req, res) => {
   try {
-    const { make, fuel, transmission, min_price, max_price, search } = req.query
+    const make = queryText(req.query.make, 'make')
+    const fuel = queryText(req.query.fuel, 'fuel')
+    const transmission = queryText(req.query.transmission, 'transmission')
+    const min_price = queryText(req.query.min_price, 'min_price')
+    const max_price = queryText(req.query.max_price, 'max_price')
+    const search = queryText(req.query.search, 'search')
     const filter = { status: 'available' }
 
     if (make)         filter.make = new RegExp(escapeRegex(make), 'i')
@@ -30,7 +35,7 @@ const getProducts = async (req, res) => {
     }
 
     const products = await Product.find(filter).sort({ createdAt: -1 })
-    res.json(products.map(product => toInspectionSafeObject(product, { reportPath: `/documents/products/${product._id}/report` })))
+    res.json(products.map(toPublicProductObject))
   } catch (err) {
     handleControllerError(res, err, 'Could not load used cars')
   }
@@ -40,7 +45,7 @@ const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
     if (!product) return res.status(404).json({ message: 'Product not found' })
-    res.json(toInspectionSafeObject(product, { reportPath: `/documents/products/${product._id}/report` }))
+    res.json(toPublicProductObject(product))
   } catch (err) {
     handleControllerError(res, err, 'Could not load used car')
   }

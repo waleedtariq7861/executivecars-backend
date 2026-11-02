@@ -61,7 +61,7 @@ const sendOTPEmail = async (to, otp) => {
           <h2 style="color: #0f172a; margin-top: 0;">Verify Your Email Address</h2>
           <p style="color: #64748b;">Use the code below to complete your seller booking request.</p>
           <div style="background: #fff; border: 2px solid #3b82f6; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
-            <span style="font-size: 40px; font-weight: 900; letter-spacing: 12px; color: #1e40af;">${otp}</span>
+            <span style="font-size: 40px; font-weight: 900; letter-spacing: 12px; color: #1e40af;">${escapeHtml(otp)}</span>
           </div>
           <p style="color: #94a3b8; font-size: 13px;">This code expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>
         </div>
@@ -103,13 +103,13 @@ const sendBookingConfirmationEmail = async (to, name, date, branch) => {
           <h1 style="color: #fff; margin: 0; font-size: 22px;">Executive <span style="color: #3b82f6;">Cars</span></h1>
         </div>
         <div style="background: #f8fafc; padding: 32px; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0;">
-          <h2 style="color: #0f172a; margin-top: 0;">Booking Received, ${name}!</h2>
+          <h2 style="color: #0f172a; margin-top: 0;">Booking Received, ${escapeHtml(name)}!</h2>
           <p style="color: #64748b;">Your inspection slot has been booked. Here are your details:</p>
           <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0;">
             <p style="margin: 0 0 8px; color: #64748b; font-size: 13px;">Inspection Date</p>
-            <p style="margin: 0 0 16px; color: #0f172a; font-weight: 700;">${formatted}</p>
+            <p style="margin: 0 0 16px; color: #0f172a; font-weight: 700;">${escapeHtml(formatted)}</p>
             <p style="margin: 0 0 8px; color: #64748b; font-size: 13px;">Branch</p>
-            <p style="margin: 0; color: #0f172a; font-weight: 700;">${branch}</p>
+            <p style="margin: 0; color: #0f172a; font-weight: 700;">${escapeHtml(branch)}</p>
           </div>
           <p style="color: #64748b;">Our team will review your booking. You will receive an update when its status changes.</p>
           <p style="color: #94a3b8; font-size: 13px; margin-top: 24px;">Our team will contact you when your booking has been reviewed.</p>

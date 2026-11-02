@@ -18,11 +18,14 @@ const cookieOptions = maxAgeMs => ({
   maxAge: maxAgeMs,
 })
 
+// A value with broken percent-encoding is kept as it is (it will simply not match a session) instead of throwing.
+const safeDecode = value => { try { return decodeURIComponent(value) } catch { return value } }
+
 const parseCookies = header => Object.fromEntries(
   String(header || '').split(';').map(part => part.trim()).filter(Boolean).map(part => {
     const separator = part.indexOf('=')
     if (separator < 0) return [part, '']
-    return [part.slice(0, separator), decodeURIComponent(part.slice(separator + 1))]
+    return [part.slice(0, separator), safeDecode(part.slice(separator + 1))]
   }),
 )
 

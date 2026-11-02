@@ -9,6 +9,8 @@ const importDataset = async (req, res) => {
     const source = String(req.body.source || '').trim()
     const rightsConfirmed = String(req.body.rightsConfirmed).toLowerCase() === 'true'
     if (!source) return res.status(400).json({ message: 'Describe the dataset source' })
+    if (source.length > 200) return res.status(400).json({ message: 'The dataset source must be at most 200 characters' })
+    if (req.file.originalname.length > 200) return res.status(400).json({ message: 'The file name must be at most 200 characters' })
     if (!rightsConfirmed) return res.status(400).json({ message: 'Confirm that this dataset may legally be used for the project' })
 
     const rows = parseDataset(req.file)

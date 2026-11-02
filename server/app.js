@@ -6,15 +6,7 @@ const { predictionLimiter } = require('../src/middleware/rateLimits')
 const { publicImageDir } = require('../src/config/cloudinary')
 const csrfProtection = require('../src/middleware/csrf')
 
-const configuredOrigins = [process.env.CLIENT_URL, ...(process.env.CLIENT_URLS || '').split(',')]
-  .map(value => value?.trim().replace(/\/$/, ''))
-  .filter(Boolean)
-
-if (process.env.NODE_ENV !== 'production') {
-  configuredOrigins.push('http://localhost:5173', 'http://127.0.0.1:5173')
-}
-
-const allowedOrigins = [...new Set(configuredOrigins)]
+const { allowedOrigins } = require('../src/config/origins')
 const corsOptions = {
   credentials: true,
   origin(origin, callback) {
@@ -25,10 +17,20 @@ const corsOptions = {
   },
 }
 
+const trustedProxyHops = (env = process.env) => {
+  const hops = env.TRUST_PROXY_HOPS === undefined || env.TRUST_PROXY_HOPS === '' ? 1 : Number(env.TRUST_PROXY_HOPS)
+  if (!Number.isInteger(hops) || hops < 1 || hops > 5) throw new Error('TRUST_PROXY_HOPS must be a whole number from 1 to 5')
+  return hops
+}
+
 const createApp = ({ io } = {}) => {
   const app = express()
   app.disable('x-powered-by')
-  app.set('trust proxy', 1)
+  // Query strings are flat text: ?status[$ne]=x is just a parameter with an odd name, never a database operator.
+  app.set('query parser', 'simple')
+  // How many reverse proxies sit in front of the API (Render alone: 1; Vercel in front of Render: 2). Wrong values make
+  // every visitor share one address in the rate limits, or let a visitor choose theirs.
+  app.set('trust proxy', trustedProxyHops())
   if (io) app.set('io', io)
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
@@ -36,7 +38,7 @@ const createApp = ({ io } = {}) => {
   app.use(cors(corsOptions))
   app.use(csrfProtection(allowedOrigins))
   app.use(express.json({ limit: '1mb' }))
-  app.use(express.urlencoded({ extended: true, limit: '1mb' }))
+  app.use(express.urlencoded({ extended: false, limit: '1mb' }))
   // Only vehicle imagery is public. Identity documents and inspection reports
   // are stored outside this mount and served through authorized short-lived URLs.
   app.use('/uploads/images', express.static(publicImageDir, { maxAge: '1d', fallthrough: true }))
@@ -79,4 +81,4 @@ const createApp = ({ io } = {}) => {
   return app
 }
 
-module.exports = { createApp, corsOptions, allowedOrigins }
+module.exports = { createApp, corsOptions, allowedOrigins, trustedProxyHops }

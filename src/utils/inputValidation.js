@@ -1,6 +1,10 @@
 const PERSON_NAME_PATTERN = /^[\p{L}\p{M}]+(?:[ .'-][\p{L}\p{M}]+)*$/u
 const PHONE_PATTERN = /^\+?\d{10,15}$/
 const CNIC_PATTERN = /^\d{5}-\d{7}-\d$/
+// A practical address: no spaces, quotes, angle brackets, slashes or question marks, so an address can never smuggle
+// markup, a second recipient or mailto: parameters into a page or a link.
+const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.[A-Za-z]{2,}$/
+const isValidEmail = value => typeof value === 'string' && value.length <= 254 && EMAIL_PATTERN.test(value)
 
 const normalizePersonName = value => String(value ?? '').trim().replace(/\s+/g, ' ')
 
@@ -76,6 +80,7 @@ const validateProfileInput = (payload, { requireName = false, requirePhone = fal
 }
 
 module.exports = {
+  isValidEmail,
   PERSON_NAME_PATTERN,
   PHONE_PATTERN,
   CNIC_PATTERN,

@@ -15,9 +15,11 @@ const {
   normalizePersonName,
   normalizePhone,
   strictNumber,
+  isValidEmail,
 } = require('../utils/inputValidation')
 
 const normalizeEmail = (email = '') => email.trim().toLowerCase()
+const MAX_OTP_ATTEMPTS = 5
 const digestOTP = (email, otp) => hmac('otp', `${email}:${otp}`, 'hex')
 
 const authenticatedEmail = (req, res) => {
@@ -35,7 +37,7 @@ const sendOTP = async (req, res) => {
   try {
     const email = authenticatedEmail(req, res)
     if (!email) return
-    if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ message: 'A valid email is required' })
+    if (!isValidEmail(email)) return res.status(400).json({ message: 'A valid email is required' })
 
     const existing = await OtpChallenge.findOne({ email }).select('updatedAt')
     if (existing && Date.now() - existing.updatedAt.getTime() < 60 * 1000) {
@@ -65,7 +67,7 @@ const sendOTP = async (req, res) => {
     } catch (emailError) {
       // The code never left, so it must not stay valid or count against the one-minute wait.
       await OtpChallenge.deleteOne({ email })
-      console.error(`Booking code email delivery failed for ${email}: ${emailError.message}`)
+      console.error(`Booking code email delivery failed: ${emailError.message}`)
       return res.status(502).json({ message: 'Verification email could not be sent. Please try again later.' })
     }
   } catch (err) {
@@ -83,24 +85,27 @@ const verifyOTP = async (req, res) => {
       return res.status(400).json({ message: 'Enter a valid 6-digit OTP' })
     }
 
-    const record = await OtpChallenge.findOne({ email, verified: false })
-    if (!record) return res.status(400).json({ message: 'No pending OTP for this email' })
-    if (record.expiresAt < new Date()) {
-      await record.deleteOne()
-      return res.status(400).json({ message: 'OTP has expired' })
+    // Every guess is counted before it is compared, in one atomic step, so parallel guesses cannot get past the limit.
+    const record = await OtpChallenge.findOneAndUpdate(
+      { email, verified: false, attempts: { $lt: MAX_OTP_ATTEMPTS }, expiresAt: { $gt: new Date() } },
+      { $inc: { attempts: 1 } },
+      { new: true },
+    )
+    if (!record) {
+      const pending = await OtpChallenge.findOne({ email, verified: false })
+      if (!pending) return res.status(400).json({ message: 'No pending OTP for this email' })
+      if (pending.expiresAt < new Date()) {
+        await pending.deleteOne()
+        return res.status(400).json({ message: 'OTP has expired' })
+      }
+      return res.status(429).json({ message: 'Too many incorrect attempts. Request a new OTP.' })
     }
-    if (record.attempts >= 5) return res.status(429).json({ message: 'Too many incorrect attempts. Request a new OTP.' })
 
     const suppliedDigest = digestOTP(email, String(otp))
     const isCorrect = crypto.timingSafeEqual(Buffer.from(record.otpDigest), Buffer.from(suppliedDigest))
-    if (!isCorrect) {
-      record.attempts += 1
-      await record.save()
-      return res.status(400).json({ message: 'Incorrect OTP' })
-    }
+    if (!isCorrect) return res.status(400).json({ message: 'Incorrect OTP' })
 
-    record.verified = true
-    await record.save()
+    await OtpChallenge.updateOne({ _id: record._id, verified: false }, { $set: { verified: true } })
     // The booking code was mailed to the signed-in customer's own address, so it also proves that address.
     if (req.accountModel === 'member') await markVerified(req.user._id)
 
@@ -131,6 +136,11 @@ const submitBooking = async (req, res) => {
     if (!isValidPersonName(name)) fieldErrors.name = 'Name must contain letters only.'
     if (!isValidPhone(phone)) fieldErrors.phone = 'Phone must contain 10 to 15 digits.'
     if (cnic && !isValidCnic(cnic)) fieldErrors.cnic = 'CNIC must contain exactly 13 digits.'
+    if (carMake.length > 60) fieldErrors.carMake = 'Vehicle make must be at most 60 characters.'
+    if (carModel.length > 60) fieldErrors.carModel = 'Vehicle model must be at most 60 characters.'
+    if (branch.length > 80) fieldErrors.branch = 'Branch must be at most 80 characters.'
+    if (time.length > 20) fieldErrors.time = 'Time must be at most 20 characters.'
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) fieldErrors.date = 'Choose a valid inspection date.'
 
     let carYear
     let mileage

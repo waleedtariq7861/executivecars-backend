@@ -3,6 +3,37 @@ const { randomUUID } = require('crypto')
 const Product = require('../models/Product')
 const { escapeRegex } = require('../utils/http')
 
+// The assistant is open to anyone and every request costs money, so what it accepts is small and plain text.
+const MAX_HISTORY_MESSAGES = 20
+const MAX_MESSAGE_CHARACTERS = 1000
+const MAX_TOTAL_CHARACTERS = 8000
+
+/** The messages to send to the model, or an error message to give back to the caller. */
+const cleanHistory = (messages) => {
+  if (!Array.isArray(messages) || messages.length === 0) return { error: 'messages array is required' }
+  const history = []
+  for (const message of messages.slice(-MAX_HISTORY_MESSAGES)) {
+    if (!message || typeof message !== 'object' || !['user', 'assistant'].includes(message.role)) continue
+    if (typeof message.content !== 'string') return { error: 'Each message must be text.' }
+    const content = message.content.trim()
+    if (!content) continue
+    if (content.length > MAX_MESSAGE_CHARACTERS) return { error: `Each message must be at most ${MAX_MESSAGE_CHARACTERS} characters.` }
+    history.push({ role: message.role, content })
+  }
+  if (!history.length || history.at(-1).role !== 'user') return { error: 'The last message must be a question from the user.' }
+  if (history.reduce((total, message) => total + message.content.length, 0) > MAX_TOTAL_CHARACTERS) {
+    return { error: 'The conversation is too long. Start a new one.' }
+  }
+  return { history }
+}
+
+// Arguments come from the model, which a user can steer: only plain numbers and short text are used.
+const toolNumber = (value, { min = 0, max = 1_000_000_000_000 } = {}) => {
+  const number = typeof value === 'number' ? value : (typeof value === 'string' && /^\d+(?:\.\d+)?$/.test(value.trim()) ? Number(value) : Number.NaN)
+  return Number.isFinite(number) && number >= min && number <= max ? number : undefined
+}
+const toolText = value => (typeof value === 'string' ? value.trim().slice(0, 40) : '')
+
 const DEFAULT_MODEL = 'openai/gpt-oss-20b'
 const configuredModel = () => String(process.env.GROQ_MODEL || DEFAULT_MODEL).trim()
 const capabilityCacheMs = () => Math.max(30_000, Number(process.env.CHAT_CAPABILITY_CACHE_MS) || 300_000)
@@ -57,21 +88,27 @@ const TOOLS = [
   },
 ]
 
-async function runSearchUsedCars({ make, model, price_min, price_max, year_min, limit = 5 }) {
+async function runSearchUsedCars(args) {
+  const make = toolText(args.make)
+  const model = toolText(args.model)
+  const priceMin = toolNumber(args.price_min)
+  const priceMax = toolNumber(args.price_max)
+  const yearMin = toolNumber(args.year_min, { min: 1900, max: 2100 })
+  const limit = Math.floor(toolNumber(args.limit, { min: 1, max: 10 }) ?? 5)
   const query = { status: 'available' }
   if (make) query.make = new RegExp(escapeRegex(make), 'i')
   if (model) query.model = new RegExp(escapeRegex(model), 'i')
-  if (price_min || price_max) {
+  if (priceMin || priceMax) {
     query.price = {}
-    if (price_min) query.price.$gte = price_min
-    if (price_max) query.price.$lte = price_max
+    if (priceMin) query.price.$gte = priceMin
+    if (priceMax) query.price.$lte = priceMax
   }
-  if (year_min) query.year = { $gte: year_min }
+  if (yearMin) query.year = { $gte: yearMin }
 
   const cars = await Product.find(query)
     .select('make model year km price transmission fuel color')
     .sort({ createdAt: -1 })
-    .limit(Math.min(limit, 10))
+    .limit(limit)
     .lean()
 
   if (cars.length === 0) return 'No used cars found matching those criteria.'
@@ -206,14 +243,8 @@ const chatHealth = async (req, res) => {
 const chat = async (req, res) => {
   const requestId = requestIdFor(req)
   try {
-    const { messages } = req.body
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ message: 'messages array is required' })
-    }
-
-    const history = messages
-      .filter(m => m.role && m.content && ['user', 'assistant'].includes(m.role))
-      .slice(-20)
+    const { history, error } = cleanHistory(req.body?.messages)
+    if (error) return res.status(400).json({ message: error, requestId })
 
     if (!process.env.GROQ_API_KEY) {
       return res.status(503).json({ message: 'AI assistant is not configured', code: 'not_configured', requestId })

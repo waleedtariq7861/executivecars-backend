@@ -16,13 +16,14 @@ const {
   normalizePersonName,
   normalizePhone,
   validateProfileInput,
+  isValidEmail,
 } = require('../utils/inputValidation')
 
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase()
 
 const MAX_LOGIN_PASSWORD_LENGTH = 1024
 
-const loginInputIsValid = (email, password) => /^\S+@\S+\.\S+$/.test(email)
+const loginInputIsValid = (email, password) => isValidEmail(email)
   && typeof password === 'string' && password.length > 0 && password.length <= MAX_LOGIN_PASSWORD_LENGTH
 
 const passwordProblem = (res, result) => res.status(400).json({
@@ -106,7 +107,7 @@ const accountRegister = async (req, res) => {
     const phone = normalizePhone(req.body.phone)
     const { password } = req.body
     const { errors } = validateProfileInput({ name, phone }, { requireName: true, requirePhone: true })
-    if (Object.keys(errors).length || !/^\S+@\S+\.\S+$/.test(email) || typeof password !== 'string') {
+    if (Object.keys(errors).length || !isValidEmail(email) || typeof password !== 'string') {
       return res.status(400).json({
         message: 'Please enter a valid name, email, phone, and password.',
         errors,

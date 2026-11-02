@@ -25,6 +25,7 @@ const Bid = require('../src/models/Bid')
 const Admin = require('../src/models/Admin')
 const Booking = require('../src/models/Booking')
 const Member = require('../src/models/Member')
+const OtpChallenge = require('../src/models/OtpChallenge')
 // This suite is about bids, payments, bookings and sockets, not email verification (emailVerification.test.js covers
 // that against the real check): customers created here are treated as verified.
 Member.prototype.isEmailVerified = () => true
@@ -451,6 +452,9 @@ test('inspection booking requires a member account and remains owned by that mem
     })
   assert.equal(bookingResponse.status, 201)
 
+  // The first booking used up the verified code, and a code is required before anything is accepted: confirm a new one
+  // so the duplicate check itself is what answers.
+  await OtpChallenge.create({ email: 'customer@example.com', otpDigest: 'not-compared', expiresAt: new Date(Date.now() + 600_000), verified: true })
   const duplicateBooking = await request(app)
     .post('/api/bookings')
     .set(memberAuth)
@@ -656,7 +660,7 @@ test('only administrators can view bid history and close an auction', async () =
   assert.equal(history.status, 200)
   const unsoldBid = history.body.find(bid => bid.carId._id === String(reserveAuction._id))
   assert.deepEqual(unsoldBid.auctionState, { status: 'unsold', biddingOpen: false })
-  assert.equal(unsoldBid.carId.reservePrice, 4000000)
+  assert.equal(unsoldBid.carId.reservePrice, undefined, 'bidders never receive the reserve price')
   const winningBid = history.body.find(bid => bid.carId._id === String(auction._id))
   assert.deepEqual(winningBid.auctionState, { status: 'won', biddingOpen: false })
 })

@@ -3,6 +3,7 @@ const Car = require('../models/Car')
 const mongoose = require('mongoose')
 const { handleControllerError } = require('../utils/http')
 const { strictNumber } = require('../utils/inputValidation')
+const { emitBidUpdate } = require('../utils/auctionEvents')
 
 const placeBid = async (req, res) => {
   try {
@@ -23,7 +24,7 @@ const placeBid = async (req, res) => {
     if (current.status !== 'active') return res.status(400).json({ message: 'Auction is not active' })
     if (now < current.auctionStart) return res.status(400).json({ message: 'Auction has not started yet' })
     if (now >= current.auctionEnd) return res.status(400).json({ message: 'Auction has ended' })
-    if (current.ownerId?.toString() === req.user._id.toString() || (current.sellerEmail && current.sellerEmail === req.user.email)) {
+    if (current.ownerId && current.ownerId.toString() === req.user._id.toString()) {
       return res.status(403).json({ message: 'You cannot bid on your own vehicle' })
     }
 
@@ -71,20 +72,12 @@ const placeBid = async (req, res) => {
     const bidCount = (previous.bidCount || 0) + 1
     const previousHighest = previous.highestBidder
 
-    // Emit Socket.io event — io is attached to app in server.js
+    // Live updates go out through Socket.IO (attached to the app at start-up); see utils/auctionEvents.js for who learns what.
     const io = req.app.get('io')
-    if (io) {
-      io.to(carId).emit('bid-update', {
-        carId,
-        currentBid:    bidAmount,
-        highestBidder: { _id: req.user._id, name: req.user.name },
-        bidCount,
-      })
-
-      // Notify previous highest bidder they've been outbid
-      if (previousHighest && previousHighest.toString() !== req.user._id.toString()) {
-        io.to(`user-${previousHighest}`).emit('outbid', { carId, newBid: bidAmount })
-      }
+    emitBidUpdate(io, { carId, bidAmount, bidder: req.user, bidCount })
+    // Whoever was leading is told, privately, that they have been outbid.
+    if (io && previousHighest && previousHighest.toString() !== req.user._id.toString()) {
+      io.to(`user-${previousHighest}`).emit('outbid', { carId, newBid: bidAmount })
     }
 
     res.status(201).json({ message: 'Bid placed successfully', currentBid: bidAmount, bidCount })
