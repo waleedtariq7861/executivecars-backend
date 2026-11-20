@@ -88,4 +88,11 @@ const chatLimiter = createLimiter({
   message: 'Too many assistant requests. Please wait a minute and try again.',
 })
 
-module.exports = { loginLimiter, adminLoginLimiter, registerLimiter, forgotPasswordLimiter, resetPasswordLimiter, emailVerificationLimiter, mfaLimiter, bookingLimiter, paymentLimiter, otpLimiter, predictionLimiter, chatLimiter }
+// Opening a private document downloads it from storage through this server, so the link route has its own flood guard.
+const documentLimiter = createLimiter({
+  windowMs: 60 * 1000,
+  limit: 40,
+  message: 'Too many document requests. Please wait a minute and try again.',
+})
+
+module.exports = { loginLimiter, adminLoginLimiter, registerLimiter, forgotPasswordLimiter, resetPasswordLimiter, emailVerificationLimiter, mfaLimiter, bookingLimiter, paymentLimiter, otpLimiter, predictionLimiter, chatLimiter, documentLimiter }
